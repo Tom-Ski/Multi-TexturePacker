@@ -55,7 +55,7 @@ public class TexturePackerFileProcessor extends FileProcessor {
 		addInputSuffix(".png", ".jpg", ".jpeg");
 	}
 
-	public ArrayList<Entry> process (File inputFile, File outputRoot) throws Exception {
+	public ArrayList<Entry> process (File inputFile, File outputRoot, File[] additionalOuts) throws Exception {
 		root = inputFile;
 
 		// Collect pack.json setting files.
@@ -66,7 +66,7 @@ public class TexturePackerFileProcessor extends FileProcessor {
 			}
 		};
 		settingsProcessor.addInputRegex("pack\\.json");
-		settingsProcessor.process(inputFile, null);
+		settingsProcessor.process(inputFile, null, null);
 		// Sort parent first.
 		Collections.sort(settingsFiles, new Comparator<File>() {
 			public int compare (File file1, File file2) {
@@ -93,7 +93,7 @@ public class TexturePackerFileProcessor extends FileProcessor {
 		}
 
 		// Do actual processing.
-		return super.process(inputFile, outputRoot);
+		return super.process(inputFile, outputRoot, additionalOuts);
 	}
 
 	void merge (Settings settings, File settingsFile) {
@@ -104,8 +104,20 @@ public class TexturePackerFileProcessor extends FileProcessor {
 		}
 	}
 
-	public ArrayList<Entry> process (File[] files, File outputRoot) throws Exception {
+	public ArrayList<Entry> process (File[] files, File outputRoot, File[] additionalOuts) throws Exception {
 		// Delete pack file and images.
+		deleteOutputIfExists(outputRoot);
+
+		if (additionalOuts != null) {
+			for (File additionalOut : additionalOuts) {
+				deleteOutputIfExists(additionalOut);
+			}
+		}
+
+		return super.process(files, outputRoot, additionalOuts);
+	}
+
+	private void deleteOutputIfExists (File outputRoot) throws Exception {
 		if (outputRoot.exists()) {
 			// Load root settings to get scale.
 			File settingsFile = new File(root, "pack.json");
@@ -127,22 +139,26 @@ public class TexturePackerFileProcessor extends FileProcessor {
 				deleteProcessor.setRecursive(false);
 
 				File packFile = new File(rootSettings.getScaledPackFileName(packFileName, i));
-				String scaledPackFileName = packFile.getName();
-
-				String prefix = packFile.getName();
-				int dotIndex = prefix.lastIndexOf('.');
-				if (dotIndex != -1) prefix = prefix.substring(0, dotIndex);
-				deleteProcessor.addInputRegex("(?i)" + prefix + "\\d*\\.(png|jpg|jpeg)");
-				deleteProcessor.addInputRegex("(?i)" + prefix + atlasExtension);
-
-				String dir = packFile.getParent();
-				if (dir == null)
-					deleteProcessor.process(outputRoot, null);
-				else if (new File(outputRoot + "/" + dir).exists()) //
-					deleteProcessor.process(outputRoot + "/" + dir, null);
+				deleteOutputFile(outputRoot, atlasExtension, deleteProcessor, packFile);
 			}
 		}
-		return super.process(files, outputRoot);
+	}
+
+	private void deleteOutputFile (File outputRoot, String atlasExtension, FileProcessor deleteProcessor, File packFile)
+		throws Exception {
+		String scaledPackFileName = packFile.getName();
+
+		String prefix = packFile.getName();
+		int dotIndex = prefix.lastIndexOf('.');
+		if (dotIndex != -1) prefix = prefix.substring(0, dotIndex);
+		deleteProcessor.addInputRegex("(?i)" + prefix + "\\d*\\.(png|jpg|jpeg)");
+		deleteProcessor.addInputRegex("(?i)" + prefix + atlasExtension);
+
+		String dir = packFile.getParent();
+		if (dir == null)
+			deleteProcessor.process(outputRoot, null, null);
+		else if (new File(outputRoot + "/" + dir).exists()) //
+			deleteProcessor.process(outputRoot + "/" + dir, null);
 	}
 
 	protected void processDir (final Entry inputDir, ArrayList<Entry> files) throws Exception {
@@ -175,7 +191,7 @@ public class TexturePackerFileProcessor extends FileProcessor {
 				protected void processFile (Entry entry) {
 					addProcessedFile(entry);
 				}
-			}.process(inputDir.inputFile, null);
+			}.process(inputDir.inputFile, null, null);
 		}
 
 		if (files.isEmpty()) return;

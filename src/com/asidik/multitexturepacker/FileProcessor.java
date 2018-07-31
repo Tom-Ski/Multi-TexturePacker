@@ -105,27 +105,27 @@ public class FileProcessor {
 	}
 
 	/** @param outputRoot May be null.
-	 * @see #process(File, File) */
+	 * @see #process(File, File, File[]) */
 	public ArrayList<Entry> process (String inputFileOrDir, String outputRoot) throws Exception {
-		return process(new File(inputFileOrDir), outputRoot == null ? null : new File(outputRoot));
+		return process(new File(inputFileOrDir), outputRoot == null ? null : new File(outputRoot), null);
 	}
 
 	/** Processes the specified input file or directory.
 	 * @param outputRoot May be null if there is no output from processing the files.
 	 * @return the processed files added with {@link #addProcessedFile(Entry)}. */
-	public ArrayList<Entry> process (File inputFileOrDir, File outputRoot) throws Exception {
+	public ArrayList<Entry> process (File inputFileOrDir, File outputRoot, File[] additionalOuts) throws Exception {
 		if (!inputFileOrDir.exists())
 			throw new IllegalArgumentException("Input file does not exist: " + inputFileOrDir.getAbsolutePath());
 		if (inputFileOrDir.isFile())
-			return process(new File[] {inputFileOrDir}, outputRoot);
+			return process(new File[] {inputFileOrDir}, outputRoot, additionalOuts);
 		else
-			return process(inputFileOrDir.listFiles(), outputRoot);
+			return process(inputFileOrDir.listFiles(), outputRoot, additionalOuts);
 	}
 
 	/** Processes the specified input files.
 	 * @param outputRoot May be null if there is no output from processing the files.
 	 * @return the processed files added with {@link #addProcessedFile(Entry)}. */
-	public ArrayList<Entry> process (File[] files, File outputRoot) throws Exception {
+	public ArrayList<Entry> process (File[] files, File outputRoot, File[] additionalOuts) throws Exception {
 		if (outputRoot == null) outputRoot = new File("");
 		outputFiles.clear();
 

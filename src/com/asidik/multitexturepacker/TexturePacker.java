@@ -153,6 +153,9 @@ public class TexturePacker {
 			progress.start(0.01f);
 			try {
 				writePackFile(outputDir, scaledPackFileName, pages);
+				for (String additionalOutput : additionalOutputs) {
+					writePackFile(new File(additionalOutput), scaledPackFileName, pages);
+				}
 			} catch (IOException ex) {
 				throw new RuntimeException("Error writing pack file.", ex);
 			}
@@ -689,7 +692,12 @@ public class TexturePacker {
 					return file1.getName().compareTo(file2.getName());
 				}
 			});
-			processor.process(new File(input), new File(output));
+			File[] additionalOuts = new File[additionalOutputs.length];
+			for (int i = 0; i < additionalOutputs.length; i++) {
+				String additionalOutput = additionalOutputs[i];
+				additionalOuts[i] = new File(additionalOutput);
+			}
+			processor.process(new File(input), new File(output), additionalOuts);
 		} catch (Exception ex) {
 			throw new RuntimeException("Error packing images.", ex);
 		}
