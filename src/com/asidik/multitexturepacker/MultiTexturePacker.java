@@ -586,10 +586,17 @@ public class MultiTexturePacker {
 		public BufferedImage getImage (ImageProcessor imageProcessor, String dirToLookIn, String fileSuffix) {
 			BufferedImage image = null;
 			try {
-				File newFile = new File(dirToLookIn, name + fileSuffix + ".png");
+				File newFile;
+
+				if (isPatch) {
+					newFile = new File(dirToLookIn, name + fileSuffix + ".9" + ".png");
+				} else {
+					newFile = new File(dirToLookIn, name + fileSuffix + ".png");
+				}
+
 				image = ImageIO.read(newFile);
+				System.out.println("Have additional asset for " + name + " " + fileSuffix);
 			} catch (IOException ex) {
-				System.out.println("No " + fileSuffix +" found for asset: " + name);
 			}
 			if (image == null) return null;
 
