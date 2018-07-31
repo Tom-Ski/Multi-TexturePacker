@@ -1,0 +1,25 @@
+plugins {
+    id 'java'
+    id 'maven'
+}
+
+group 'com.asidik.multitexturepacker'
+version '0.0.1-SNAPSHOT'
+
+sourceCompatibility = 1.8
+
+sourceSets.main.java.srcDirs = ['src']
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    compile "com.badlogicgames.gdx:gdx:1.9.8"
+}
+
+install {
+    repositories.mavenInstaller {
+        pom.artifactId = 'multi-texturepacker'
+    }
+}
