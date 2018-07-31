@@ -35,7 +35,7 @@ import javax.imageio.ImageIO;
 
 import com.badlogic.gdx.utils.Array;
 
-import com.asidik.multitexturepacker.TexturePacker.*;
+import com.asidik.multitexturepacker.MultiTexturePacker.*;
 
 public class ImageProcessor {
 	static private final BufferedImage emptyImage = new BufferedImage(1, 1, BufferedImage.TYPE_4BYTE_ABGR);

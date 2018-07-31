@@ -18,7 +18,7 @@ package com.asidik.multitexturepacker;
 
 import com.badlogic.gdx.utils.Array;
 
-import com.asidik.multitexturepacker.TexturePacker.*;
+import com.asidik.multitexturepacker.MultiTexturePacker.*;
 
 /** @author Nathan Sweet */
 public class GridPacker implements Packer {

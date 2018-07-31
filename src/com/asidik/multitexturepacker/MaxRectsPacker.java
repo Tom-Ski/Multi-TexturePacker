@@ -22,7 +22,7 @@ import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.Sort;
 
-import com.asidik.multitexturepacker.TexturePacker.*;
+import com.asidik.multitexturepacker.MultiTexturePacker.*;
 
 /** Packs pages of images using the maximal rectangles bin packing algorithm by Jukka Jylänki. A brute force binary search is
  * used to pack into the smallest bin possible.

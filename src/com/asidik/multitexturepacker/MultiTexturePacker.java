@@ -53,7 +53,7 @@ import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 
 /** @author Nathan Sweet */
-public class TexturePacker {
+public class MultiTexturePacker {
 	private final Settings settings;
 	private final Packer packer;
 	private final ImageProcessor imageProcessor;
@@ -65,7 +65,7 @@ public class TexturePacker {
 	private String[] additionalFileSuffixes;
 
 	/** @param rootDir Used to strip the root directory prefix from image file names, can be null. */
-	public TexturePacker (File rootDir, Settings settings) {
+	public MultiTexturePacker (File rootDir, Settings settings) {
 		this.rootDir = rootDir;
 		this.settings = settings;
 
@@ -90,7 +90,7 @@ public class TexturePacker {
 		imageProcessor = new ImageProcessor(rootDir, settings);
 	}
 
-	public TexturePacker (Settings settings) {
+	public MultiTexturePacker (Settings settings) {
 		this(null, settings);
 	}
 
@@ -679,8 +679,8 @@ public class TexturePacker {
 		final ProgressListener progress) {
 		try {
 			TexturePackerFileProcessor processor = new TexturePackerFileProcessor(settings, packFileName) {
-				protected TexturePacker newTexturePacker (File root, Settings settings) {
-					TexturePacker packer = super.newTexturePacker(root, settings);
+				protected MultiTexturePacker newTexturePacker (File root, Settings settings) {
+					MultiTexturePacker packer = super.newTexturePacker(root, settings);
 					packer.setAdditionals(additionalInputs, additionalOutputs, additionalFileSuffixes);
 					packer.setProgressListener(progress);
 					return packer;

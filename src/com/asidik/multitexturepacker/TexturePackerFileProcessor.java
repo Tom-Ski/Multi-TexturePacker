@@ -29,7 +29,7 @@ import com.badlogic.gdx.utils.Json;
 import com.badlogic.gdx.utils.JsonReader;
 import com.badlogic.gdx.utils.ObjectMap;
 
-import com.asidik.multitexturepacker.TexturePacker.*;
+import com.asidik.multitexturepacker.MultiTexturePacker.*;
 
 /** @author Nathan Sweet */
 public class TexturePackerFileProcessor extends FileProcessor {
@@ -236,13 +236,13 @@ public class TexturePackerFileProcessor extends FileProcessor {
 
 		// Pack.
 		if (!settings.silent) System.out.println(inputDir.inputFile.getName());
-		TexturePacker packer = newTexturePacker(root, settings);
+		MultiTexturePacker packer = newTexturePacker(root, settings);
 		for (Entry file : files)
 			packer.addImage(file.inputFile);
 		packer.pack(inputDir.outputDir, packFileName);
 	}
 
-	protected TexturePacker newTexturePacker (File root, Settings settings) {
-		return new TexturePacker(root, settings);
+	protected MultiTexturePacker newTexturePacker (File root, Settings settings) {
+		return new MultiTexturePacker(root, settings);
 	}
 }
