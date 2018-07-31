@@ -3,7 +3,7 @@ plugins {
     id 'maven'
 }
 
-group 'com.asidik.multitexturepacker'
+group 'com.github.Tom-Ski'
 version '0.0.1-SNAPSHOT'
 
 sourceCompatibility = 1.8
