@@ -16,6 +16,7 @@
 
 package com.asidik.multitexturepacker;
 
+import java.awt.*;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.FileReader;
@@ -47,9 +48,6 @@ import com.badlogic.gdx.utils.GdxRuntimeException;
 import com.badlogic.gdx.utils.Json;
 import com.badlogic.gdx.utils.ObjectMap;
 
-import java.awt.Color;
-import java.awt.Graphics2D;
-import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 
 /** @author Nathan Sweet */
@@ -589,39 +587,47 @@ public class MultiTexturePacker {
 			BufferedImage image = null;
 			File newFile;
 
+			String indexString = "";
+
+			if (index != -1) {
+				indexString = "_" + index;
+			}
+
 			try {
 				if (isPatch) {
-					newFile = new File(dirToLookIn, name + fileSuffix + ".9" + ".png");
+					newFile = new File(dirToLookIn, name + indexString +fileSuffix + ".9" + ".png");
 				} else {
-					newFile = new File(dirToLookIn, name + fileSuffix + ".png");
+					newFile = new File(dirToLookIn, name + indexString + fileSuffix + ".png");
 				}
 
 				image = ImageIO.read(newFile);
-				System.out.println("Have additional asset for " + name + " " + fileSuffix);
+				System.out.println("Have additional asset for " + name + indexString + " " + fileSuffix);
 			} catch (IOException ex) {
-				System.out.println("Using black alpha masked version for " + name +" " + fileSuffix);
+				System.out.println("Using black alpha masked version for " + name + indexString +" " + fileSuffix);
 
 				if (isPatch) {
-					newFile = new File(originalDirToLookIn, name + ".9" + ".png");
+					newFile = new File(originalDirToLookIn, name + indexString + ".9" + ".png");
 				} else {
-					newFile = new File(originalDirToLookIn, name + ".png");
+					newFile = new File(originalDirToLookIn, name + indexString+ ".png");
 				}
 
 				try {
 					image = ImageIO.read(newFile);
 
-					BufferedImage img = new BufferedImage(image.getWidth(), image.getHeight(),
-							BufferedImage.TRANSLUCENT);
-					Graphics2D graphics = img.createGraphics();
-					Color newColor = new Color(0, 0, 0, 0 /* alpha needs to be zero */);
-					graphics.setXORMode(newColor);
-					graphics.drawImage(img, null, 0, 0);
-					graphics.dispose();
-
-					image = img;
+					for (int x = 0; x < image.getWidth(); x++) {
+						for (int y = 0; y < image.getHeight(); y++) {
+							Color pixelColor = new Color(image.getRGB(x, y), true);
+							int r = 0;
+							int g = 0;
+							int b = 0;
+							int a = pixelColor.getAlpha();
+							int rgba = (a << 24) | (r << 16) | (g << 8) | b;
+							image.setRGB(x, y, rgba);
+						}
+					}
 
 				} catch (IOException e) {
-					throw new RuntimeException("No image found in original input directory");
+					throw new RuntimeException("No image found in original input directory: " + newFile.getAbsolutePath());
 				}
 			}
 			if (image == null) return null;
