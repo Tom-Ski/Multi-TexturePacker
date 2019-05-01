@@ -60,6 +60,7 @@ public class MultiTexturePacker {
 	private final Array<InputImage> inputImages = new Array();
 	private File rootDir;
 	private ProgressListener progress;
+	private String[] originalInputs;
 	private String[] additionalInputs;
 	private String[] additionalOutputs;
 	private String[] additionalFileSuffixes;
@@ -307,8 +308,9 @@ public class MultiTexturePacker {
 
 			String suffix = this.additionalFileSuffixes[i];
 			String input = this.additionalInputs[i];
+			String originalInput = this.originalInputs[0];
 
-			BufferedImage additionalImage = rect.getImage(imageProcessor, input, suffix);
+			BufferedImage additionalImage = rect.getImage(imageProcessor, originalInput, input, suffix);
 
 			if (additionalImage != null)
 				putImageIntoGraphics(page, bufferImage, graphics, rect, additionalImage);
@@ -583,11 +585,11 @@ public class MultiTexturePacker {
 			return imageProcessor.processImage(image, name).getImage(null);
 		}
 
-		public BufferedImage getImage (ImageProcessor imageProcessor, String dirToLookIn, String fileSuffix) {
+		public BufferedImage getImage (ImageProcessor imageProcessor, String originalDirToLookIn, String dirToLookIn, String fileSuffix) {
 			BufferedImage image = null;
-			try {
-				File newFile;
+			File newFile;
 
+			try {
 				if (isPatch) {
 					newFile = new File(dirToLookIn, name + fileSuffix + ".9" + ".png");
 				} else {
@@ -597,6 +599,30 @@ public class MultiTexturePacker {
 				image = ImageIO.read(newFile);
 				System.out.println("Have additional asset for " + name + " " + fileSuffix);
 			} catch (IOException ex) {
+				System.out.println("Using black alpha masked version for " + name +" " + fileSuffix);
+
+				if (isPatch) {
+					newFile = new File(originalDirToLookIn, name + ".9" + ".png");
+				} else {
+					newFile = new File(originalDirToLookIn, name + ".png");
+				}
+
+				try {
+					image = ImageIO.read(newFile);
+
+					BufferedImage img = new BufferedImage(image.getWidth(), image.getHeight(),
+							BufferedImage.TRANSLUCENT);
+					Graphics2D graphics = img.createGraphics();
+					Color newColor = new Color(0, 0, 0, 0 /* alpha needs to be zero */);
+					graphics.setXORMode(newColor);
+					graphics.drawImage(img, null, 0, 0);
+					graphics.dispose();
+
+					image = img;
+
+				} catch (IOException e) {
+					throw new RuntimeException("No image found in original input directory");
+				}
 			}
 			if (image == null) return null;
 
@@ -688,6 +714,7 @@ public class MultiTexturePacker {
 			TexturePackerFileProcessor processor = new TexturePackerFileProcessor(settings, packFileName) {
 				protected MultiTexturePacker newTexturePacker (File root, Settings settings) {
 					MultiTexturePacker packer = super.newTexturePacker(root, settings);
+					packer.setOriginals(input);
 					packer.setAdditionals(additionalInputs, additionalOutputs, additionalFileSuffixes);
 					packer.setProgressListener(progress);
 					return packer;
@@ -708,6 +735,10 @@ public class MultiTexturePacker {
 		} catch (Exception ex) {
 			throw new RuntimeException("Error packing images.", ex);
 		}
+	}
+
+	private void setOriginals (String input) {
+		this.originalInputs = new String[] {input};
 	}
 
 	private void setAdditionals (String[] additionalInputs, String[] additionalOutputs, String[] additionalFileSuffixes) {
