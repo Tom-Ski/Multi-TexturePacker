@@ -14,7 +14,7 @@
  * limitations under the License.
  ******************************************************************************/
 
-package com.asidik.multitexturepacker;
+package com.badlogic.gdx.tools.texturepacker;
 
 import com.badlogic.gdx.utils.Array;
 

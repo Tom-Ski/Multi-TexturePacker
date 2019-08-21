@@ -23,3 +23,16 @@ install {
         pom.artifactId = 'multi-texturepacker'
     }
 }
+
+
+project.ext.multiMainClass = "com.badlogic.gdx.tools.texturepacker.MultiTexturePacker"
+
+task dist(type: Jar) {
+    from files(sourceSets.main.output.classesDirs)
+    from files(sourceSets.main.output.resourcesDir)
+    from { configurations.compile.collect { zipTree(it) } }
+
+    manifest {
+        attributes 'Main-Class': project.multiMainClass
+    }
+}

@@ -14,25 +14,25 @@
  * limitations under the License.
  ******************************************************************************/
 
-package com.asidik.multitexturepacker;
+package com.badlogic.gdx.tools.texturepacker;
 
 import com.badlogic.gdx.utils.Array;
 
-import com.asidik.multitexturepacker.MultiTexturePacker.*;
+import static com.badlogic.gdx.tools.texturepacker.TexturePacker.*;
 
 /** @author Nathan Sweet */
-public class GridPacker implements Packer {
+public class GridPacker implements MultiTexturePacker.Packer {
 	private final Settings settings;
 
 	public GridPacker (Settings settings) {
 		this.settings = settings;
 	}
 
-	public Array<Page> pack (Array<Rect> inputRects) {
+	public Array<MultiTexturePacker.Page> pack (Array<MultiTexturePacker.Rect> inputRects) {
 		return pack(null, inputRects);
 	}
 
-	public Array<Page> pack (ProgressListener progress, Array<Rect> inputRects) {
+	public Array<MultiTexturePacker.Page> pack (ProgressListener progress, Array<MultiTexturePacker.Rect> inputRects) {
 		if (!settings.silent) System.out.print("Packing");
 
 		// Rects are packed with right and top padding, so the max size is increased to match. After packing the padding is
@@ -53,7 +53,7 @@ public class GridPacker implements Packer {
 		int n = inputRects.size;
 		int cellWidth = 0, cellHeight = 0;
 		for (int i = 0; i < n; i++) {
-			Rect rect = inputRects.get(i);
+			MultiTexturePacker.Rect rect = inputRects.get(i);
 			cellWidth = Math.max(cellWidth, rect.width);
 			cellHeight = Math.max(cellHeight, rect.height);
 		}
@@ -62,10 +62,10 @@ public class GridPacker implements Packer {
 
 		inputRects.reverse();
 
-		Array<Page> pages = new Array();
+		Array<MultiTexturePacker.Page> pages = new Array();
 		while (inputRects.size > 0) {
 			if (progress != null && progress.update(n - inputRects.size + 1, n)) break;
-			Page page = packPage(inputRects, cellWidth, cellHeight, maxWidth, maxHeight);
+			MultiTexturePacker.Page page = packPage(inputRects, cellWidth, cellHeight, maxWidth, maxHeight);
 			page.width -= paddingX;
 			page.height -= paddingY;
 			pages.add(page);
@@ -73,8 +73,8 @@ public class GridPacker implements Packer {
 		return pages;
 	}
 
-	private Page packPage (Array<Rect> inputRects, int cellWidth, int cellHeight, int maxWidth, int maxHeight) {
-		Page page = new Page();
+	private MultiTexturePacker.Page packPage (Array<MultiTexturePacker.Rect> inputRects, int cellWidth, int cellHeight, int maxWidth, int maxHeight) {
+		MultiTexturePacker.Page page = new MultiTexturePacker.Page();
 		page.outputRects = new Array();
 
 		int n = inputRects.size;
@@ -85,7 +85,7 @@ public class GridPacker implements Packer {
 				if (y > maxHeight - cellHeight) break;
 				x = 0;
 			}
-			Rect rect = inputRects.removeIndex(i);
+			MultiTexturePacker.Rect rect = inputRects.removeIndex(i);
 			rect.x = x;
 			rect.y = y;
 			rect.width += settings.paddingX;
@@ -98,7 +98,7 @@ public class GridPacker implements Packer {
 
 		// Flip so rows start at top.
 		for (int i = page.outputRects.size - 1; i >= 0; i--) {
-			Rect rect = page.outputRects.get(i);
+			MultiTexturePacker.Rect rect = page.outputRects.get(i);
 			rect.y = page.height - rect.y - rect.height;
 		}
 		return page;

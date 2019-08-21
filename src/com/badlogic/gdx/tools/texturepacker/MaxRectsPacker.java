@@ -14,7 +14,7 @@
  * limitations under the License.
  ******************************************************************************/
 
-package com.asidik.multitexturepacker;
+package com.badlogic.gdx.tools.texturepacker;
 
 import java.util.Comparator;
 
@@ -22,20 +22,20 @@ import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.Sort;
 
-import com.asidik.multitexturepacker.MultiTexturePacker.*;
+import static com.badlogic.gdx.tools.texturepacker.TexturePacker.*;
 
 /** Packs pages of images using the maximal rectangles bin packing algorithm by Jukka Jylänki. A brute force binary search is
  * used to pack into the smallest bin possible.
  * @author Nathan Sweet */
-public class MaxRectsPacker implements Packer {
+public class MaxRectsPacker implements MultiTexturePacker.Packer {
 	final Settings settings;
 	private final FreeRectChoiceHeuristic[] methods = FreeRectChoiceHeuristic.values();
 	private final MaxRects maxRects = new MaxRects();
 	private final Sort sort = new Sort();
 
-	private final Comparator<Rect> rectComparator = new Comparator<Rect>() {
-		public int compare (Rect o1, Rect o2) {
-			return Rect.getAtlasName(o1.name, settings.flattenPaths).compareTo(Rect.getAtlasName(o2.name, settings.flattenPaths));
+	private final Comparator<MultiTexturePacker.Rect> rectComparator = new Comparator<MultiTexturePacker.Rect>() {
+		public int compare (MultiTexturePacker.Rect o1, MultiTexturePacker.Rect o2) {
+			return MultiTexturePacker.Rect.getAtlasName(o1.name, settings.flattenPaths).compareTo(MultiTexturePacker.Rect.getAtlasName(o2.name, settings.flattenPaths));
 		}
 	};
 
@@ -46,14 +46,14 @@ public class MaxRectsPacker implements Packer {
 			throw new RuntimeException("Page min height cannot be higher than max height.");
 	}
 
-	public Array<Page> pack (Array<Rect> inputRects) {
+	public Array<MultiTexturePacker.Page> pack (Array<MultiTexturePacker.Rect> inputRects) {
 		return pack(null, inputRects);
 	}
 
-	public Array<Page> pack (ProgressListener progress, Array<Rect> inputRects) {
+	public Array<MultiTexturePacker.Page> pack (ProgressListener progress, Array<MultiTexturePacker.Rect> inputRects) {
 		int n = inputRects.size;
 		for (int i = 0; i < n; i++) {
-			Rect rect = inputRects.get(i);
+			MultiTexturePacker.Rect rect = inputRects.get(i);
 			rect.width += settings.paddingX;
 			rect.height += settings.paddingY;
 		}
@@ -61,8 +61,8 @@ public class MaxRectsPacker implements Packer {
 		if (settings.fast) {
 			if (settings.rotation) {
 				// Sort by longest side if rotation is enabled.
-				sort.sort(inputRects, new Comparator<Rect>() {
-					public int compare (Rect o1, Rect o2) {
+				sort.sort(inputRects, new Comparator<MultiTexturePacker.Rect>() {
+					public int compare (MultiTexturePacker.Rect o1, MultiTexturePacker.Rect o2) {
 						int n1 = o1.width > o1.height ? o1.width : o1.height;
 						int n2 = o2.width > o2.height ? o2.width : o2.height;
 						return n2 - n1;
@@ -70,18 +70,18 @@ public class MaxRectsPacker implements Packer {
 				});
 			} else {
 				// Sort only by width (largest to smallest) if rotation is disabled.
-				sort.sort(inputRects, new Comparator<Rect>() {
-					public int compare (Rect o1, Rect o2) {
+				sort.sort(inputRects, new Comparator<MultiTexturePacker.Rect>() {
+					public int compare (MultiTexturePacker.Rect o1, MultiTexturePacker.Rect o2) {
 						return o2.width - o1.width;
 					}
 				});
 			}
 		}
 
-		Array<Page> pages = new Array();
+		Array<MultiTexturePacker.Page> pages = new Array();
 		while (inputRects.size > 0) {
 			if (progress != null && progress.update(n - inputRects.size + 1, n)) break;
-			Page result = packPage(progress, inputRects);
+			MultiTexturePacker.Page result = packPage(progress, inputRects);
 			pages.add(result);
 			inputRects = result.remainingRects;
 		}
@@ -89,7 +89,7 @@ public class MaxRectsPacker implements Packer {
 
 	}
 
-	private Page packPage (ProgressListener progress, Array<Rect> inputRects) {
+	private MultiTexturePacker.Page packPage (ProgressListener progress, Array<MultiTexturePacker.Rect> inputRects) {
 		int paddingX = settings.paddingX, paddingY = settings.paddingY;
 		float maxWidth = settings.maxWidth, maxHeight = settings.maxHeight;
 		boolean edgePadX = false, edgePadY = false;
@@ -108,7 +108,7 @@ public class MaxRectsPacker implements Packer {
 		// Find min size.
 		int minWidth = Integer.MAX_VALUE, minHeight = Integer.MAX_VALUE;
 		for (int i = 0, nn = inputRects.size; i < nn; i++) {
-			Rect rect = inputRects.get(i);
+			MultiTexturePacker.Rect rect = inputRects.get(i);
 			int width = rect.width - paddingX, height = rect.height - paddingY;
 			minWidth = Math.min(minWidth, width);
 			minHeight = Math.min(minHeight, height);
@@ -150,14 +150,14 @@ public class MaxRectsPacker implements Packer {
 		if (!settings.silent) System.out.print("Packing");
 
 		// Find the minimal page size that fits all rects.
-		Page bestResult = null;
+		MultiTexturePacker.Page bestResult = null;
 		if (settings.square) {
 			int minSize = Math.max(minWidth, minHeight);
 			int maxSize = Math.min(settings.maxWidth, settings.maxHeight);
 			BinarySearch sizeSearch = new BinarySearch(minSize, maxSize, settings.fast ? 25 : 15, settings.pot, settings.multipleOfFour);
 			int size = sizeSearch.reset(), i = 0;
 			while (size != -1) {
-				Page result = packAtSize(true, size + adjustX, size + adjustY, inputRects);
+				MultiTexturePacker.Page result = packAtSize(true, size + adjustX, size + adjustY, inputRects);
 				if (!settings.silent) {
 					if (++i % 70 == 0) System.out.println();
 					System.out.print(".");
@@ -180,9 +180,9 @@ public class MaxRectsPacker implements Packer {
 			int width = widthSearch.reset(), i = 0;
 			int height = settings.square ? width : heightSearch.reset();
 			while (true) {
-				Page bestWidthResult = null;
+				MultiTexturePacker.Page bestWidthResult = null;
 				while (width != -1) {
-					Page result = packAtSize(true, width + adjustX, height + adjustY, inputRects);
+					MultiTexturePacker.Page result = packAtSize(true, width + adjustX, height + adjustY, inputRects);
 					if (!settings.silent) {
 						if (++i % 70 == 0) System.out.println();
 						System.out.print(".");
@@ -210,17 +210,17 @@ public class MaxRectsPacker implements Packer {
 
 	/** @param fully If true, the only results that pack all rects will be considered. If false, all results are considered, not
 	 *           all rects may be packed. */
-	private Page packAtSize (boolean fully, int width, int height, Array<Rect> inputRects) {
-		Page bestResult = null;
+	private MultiTexturePacker.Page packAtSize (boolean fully, int width, int height, Array<MultiTexturePacker.Rect> inputRects) {
+		MultiTexturePacker.Page bestResult = null;
 		for (int i = 0, n = methods.length; i < n; i++) {
 			maxRects.init(width, height);
-			Page result;
+			MultiTexturePacker.Page result;
 			if (!settings.fast) {
 				result = maxRects.pack(inputRects, methods[i]);
 			} else {
-				Array<Rect> remaining = new Array();
+				Array<MultiTexturePacker.Rect> remaining = new Array();
 				for (int ii = 0, nn = inputRects.size; ii < nn; ii++) {
-					Rect rect = inputRects.get(ii);
+					MultiTexturePacker.Rect rect = inputRects.get(ii);
 					if (maxRects.insert(rect, methods[i]) == null) {
 						while (ii < nn)
 							remaining.add(inputRects.get(ii++));
@@ -236,7 +236,7 @@ public class MaxRectsPacker implements Packer {
 		return bestResult;
 	}
 
-	private Page getBest (Page result1, Page result2) {
+	private MultiTexturePacker.Page getBest (MultiTexturePacker.Page result1, MultiTexturePacker.Page result2) {
 		if (result1 == null) return result2;
 		if (result2 == null) return result1;
 		return result1.occupancy > result2.occupancy ? result1 : result2;
@@ -292,8 +292,8 @@ public class MaxRectsPacker implements Packer {
 	 * @author Nathan Sweet */
 	class MaxRects {
 		private int binWidth, binHeight;
-		private final Array<Rect> usedRectangles = new Array();
-		private final Array<Rect> freeRectangles = new Array();
+		private final Array<MultiTexturePacker.Rect> usedRectangles = new Array();
+		private final Array<MultiTexturePacker.Rect> freeRectangles = new Array();
 
 		public void init (int width, int height) {
 			binWidth = width;
@@ -301,7 +301,7 @@ public class MaxRectsPacker implements Packer {
 
 			usedRectangles.clear();
 			freeRectangles.clear();
-			Rect n = new Rect();
+			MultiTexturePacker.Rect n = new MultiTexturePacker.Rect();
 			n.x = 0;
 			n.y = 0;
 			n.width = width;
@@ -310,8 +310,8 @@ public class MaxRectsPacker implements Packer {
 		}
 
 		/** Packs a single image. Order is defined externally. */
-		public Rect insert (Rect rect, FreeRectChoiceHeuristic method) {
-			Rect newNode = scoreRect(rect, method);
+		public MultiTexturePacker.Rect insert (MultiTexturePacker.Rect rect, FreeRectChoiceHeuristic method) {
+			MultiTexturePacker.Rect newNode = scoreRect(rect, method);
 			if (newNode.height == 0) return null;
 
 			int numRectanglesToProcess = freeRectangles.size;
@@ -325,7 +325,7 @@ public class MaxRectsPacker implements Packer {
 
 			pruneFreeList();
 
-			Rect bestNode = new Rect();
+			MultiTexturePacker.Rect bestNode = new MultiTexturePacker.Rect();
 			bestNode.set(rect);
 			bestNode.score1 = newNode.score1;
 			bestNode.score2 = newNode.score2;
@@ -340,17 +340,17 @@ public class MaxRectsPacker implements Packer {
 		}
 
 		/** For each rectangle, packs each one then chooses the best and packs that. Slow! */
-		public Page pack (Array<Rect> rects, FreeRectChoiceHeuristic method) {
+		public MultiTexturePacker.Page pack (Array<MultiTexturePacker.Rect> rects, FreeRectChoiceHeuristic method) {
 			rects = new Array(rects);
 			while (rects.size > 0) {
 				int bestRectIndex = -1;
-				Rect bestNode = new Rect();
+				MultiTexturePacker.Rect bestNode = new MultiTexturePacker.Rect();
 				bestNode.score1 = Integer.MAX_VALUE;
 				bestNode.score2 = Integer.MAX_VALUE;
 
 				// Find the next rectangle that packs best.
 				for (int i = 0; i < rects.size; i++) {
-					Rect newNode = scoreRect(rects.get(i), method);
+					MultiTexturePacker.Rect newNode = scoreRect(rects.get(i), method);
 					if (newNode.score1 < bestNode.score1 || (newNode.score1 == bestNode.score1 && newNode.score2 < bestNode.score2)) {
 						bestNode.set(rects.get(i));
 						bestNode.score1 = newNode.score1;
@@ -370,19 +370,19 @@ public class MaxRectsPacker implements Packer {
 				rects.removeIndex(bestRectIndex);
 			}
 
-			Page result = getResult();
+			MultiTexturePacker.Page result = getResult();
 			result.remainingRects = rects;
 			return result;
 		}
 
-		public Page getResult () {
+		public MultiTexturePacker.Page getResult () {
 			int w = 0, h = 0;
 			for (int i = 0; i < usedRectangles.size; i++) {
-				Rect rect = usedRectangles.get(i);
+				MultiTexturePacker.Rect rect = usedRectangles.get(i);
 				w = Math.max(w, rect.x + rect.width);
 				h = Math.max(h, rect.y + rect.height);
 			}
-			Page result = new Page();
+			MultiTexturePacker.Page result = new MultiTexturePacker.Page();
 			result.outputRects = new Array(usedRectangles);
 			result.occupancy = getOccupancy();
 			result.width = w;
@@ -390,7 +390,7 @@ public class MaxRectsPacker implements Packer {
 			return result;
 		}
 
-		private void placeRect (Rect node) {
+		private void placeRect (MultiTexturePacker.Rect node) {
 			int numRectanglesToProcess = freeRectangles.size;
 			for (int i = 0; i < numRectanglesToProcess; i++) {
 				if (splitFreeNode(freeRectangles.get(i), node)) {
@@ -405,14 +405,14 @@ public class MaxRectsPacker implements Packer {
 			usedRectangles.add(node);
 		}
 
-		private Rect scoreRect (Rect rect, FreeRectChoiceHeuristic method) {
+		private MultiTexturePacker.Rect scoreRect (MultiTexturePacker.Rect rect, FreeRectChoiceHeuristic method) {
 			int width = rect.width;
 			int height = rect.height;
 			int rotatedWidth = height - settings.paddingY + settings.paddingX;
 			int rotatedHeight = width - settings.paddingX + settings.paddingY;
 			boolean rotate = rect.canRotate && settings.rotation;
 
-			Rect newNode = null;
+			MultiTexturePacker.Rect newNode = null;
 			switch (method) {
 			case BestShortSideFit:
 				newNode = findPositionForNewNodeBestShortSideFit(width, height, rotatedWidth, rotatedHeight, rotate);
@@ -449,8 +449,8 @@ public class MaxRectsPacker implements Packer {
 			return (float)usedSurfaceArea / (binWidth * binHeight);
 		}
 
-		private Rect findPositionForNewNodeBottomLeft (int width, int height, int rotatedWidth, int rotatedHeight, boolean rotate) {
-			Rect bestNode = new Rect();
+		private MultiTexturePacker.Rect findPositionForNewNodeBottomLeft (int width, int height, int rotatedWidth, int rotatedHeight, boolean rotate) {
+			MultiTexturePacker.Rect bestNode = new MultiTexturePacker.Rect();
 
 			bestNode.score1 = Integer.MAX_VALUE; // best y, score2 is best x
 
@@ -484,9 +484,9 @@ public class MaxRectsPacker implements Packer {
 			return bestNode;
 		}
 
-		private Rect findPositionForNewNodeBestShortSideFit (int width, int height, int rotatedWidth, int rotatedHeight,
+		private MultiTexturePacker.Rect findPositionForNewNodeBestShortSideFit (int width, int height, int rotatedWidth, int rotatedHeight,
 			boolean rotate) {
-			Rect bestNode = new Rect();
+			MultiTexturePacker.Rect bestNode = new MultiTexturePacker.Rect();
 			bestNode.score1 = Integer.MAX_VALUE;
 
 			for (int i = 0; i < freeRectangles.size; i++) {
@@ -530,9 +530,9 @@ public class MaxRectsPacker implements Packer {
 			return bestNode;
 		}
 
-		private Rect findPositionForNewNodeBestLongSideFit (int width, int height, int rotatedWidth, int rotatedHeight,
+		private MultiTexturePacker.Rect findPositionForNewNodeBestLongSideFit (int width, int height, int rotatedWidth, int rotatedHeight,
 			boolean rotate) {
-			Rect bestNode = new Rect();
+			MultiTexturePacker.Rect bestNode = new MultiTexturePacker.Rect();
 
 			bestNode.score2 = Integer.MAX_VALUE;
 
@@ -575,9 +575,9 @@ public class MaxRectsPacker implements Packer {
 			return bestNode;
 		}
 
-		private Rect findPositionForNewNodeBestAreaFit (int width, int height, int rotatedWidth, int rotatedHeight,
+		private MultiTexturePacker.Rect findPositionForNewNodeBestAreaFit (int width, int height, int rotatedWidth, int rotatedHeight,
 			boolean rotate) {
-			Rect bestNode = new Rect();
+			MultiTexturePacker.Rect bestNode = new MultiTexturePacker.Rect();
 
 			bestNode.score1 = Integer.MAX_VALUE; // best area fit, score2 is best short side fit
 
@@ -632,9 +632,9 @@ public class MaxRectsPacker implements Packer {
 			if (x == 0 || x + width == binWidth) score += height;
 			if (y == 0 || y + height == binHeight) score += width;
 
-			Array<Rect> usedRectangles = this.usedRectangles;
+			Array<MultiTexturePacker.Rect> usedRectangles = this.usedRectangles;
 			for (int i = 0, n = usedRectangles.size; i < n; i++) {
-				Rect rect = usedRectangles.get(i);
+				MultiTexturePacker.Rect rect = usedRectangles.get(i);
 				if (rect.x == x + width || rect.x + rect.width == x)
 					score += commonIntervalLength(rect.y, rect.y + rect.height, y, y + height);
 				if (rect.y == y + height || rect.y + rect.height == y)
@@ -643,16 +643,16 @@ public class MaxRectsPacker implements Packer {
 			return score;
 		}
 
-		private Rect findPositionForNewNodeContactPoint (int width, int height, int rotatedWidth, int rotatedHeight,
+		private MultiTexturePacker.Rect findPositionForNewNodeContactPoint (int width, int height, int rotatedWidth, int rotatedHeight,
 			boolean rotate) {
 
-			Rect bestNode = new Rect();
+			MultiTexturePacker.Rect bestNode = new MultiTexturePacker.Rect();
 			bestNode.score1 = -1; // best contact score
 
-			Array<Rect> freeRectangles = this.freeRectangles;
+			Array<MultiTexturePacker.Rect> freeRectangles = this.freeRectangles;
 			for (int i = 0, n = freeRectangles.size; i < n; i++) {
 				// Try to place the rectangle in upright (non-rotated) orientation.
-				Rect free = freeRectangles.get(i);
+				MultiTexturePacker.Rect free = freeRectangles.get(i);
 				if (free.width >= width && free.height >= height) {
 					int score = contactPointScoreNode(free.x, free.y, width, height);
 					if (score > bestNode.score1) {
@@ -679,7 +679,7 @@ public class MaxRectsPacker implements Packer {
 			return bestNode;
 		}
 
-		private boolean splitFreeNode (Rect freeNode, Rect usedNode) {
+		private boolean splitFreeNode (MultiTexturePacker.Rect freeNode, MultiTexturePacker.Rect usedNode) {
 			// Test with SAT if the rectangles even intersect.
 			if (usedNode.x >= freeNode.x + freeNode.width || usedNode.x + usedNode.width <= freeNode.x
 				|| usedNode.y >= freeNode.y + freeNode.height || usedNode.y + usedNode.height <= freeNode.y) return false;
@@ -687,14 +687,14 @@ public class MaxRectsPacker implements Packer {
 			if (usedNode.x < freeNode.x + freeNode.width && usedNode.x + usedNode.width > freeNode.x) {
 				// New node at the top side of the used node.
 				if (usedNode.y > freeNode.y && usedNode.y < freeNode.y + freeNode.height) {
-					Rect newNode = new Rect(freeNode);
+					MultiTexturePacker.Rect newNode = new MultiTexturePacker.Rect(freeNode);
 					newNode.height = usedNode.y - newNode.y;
 					freeRectangles.add(newNode);
 				}
 
 				// New node at the bottom side of the used node.
 				if (usedNode.y + usedNode.height < freeNode.y + freeNode.height) {
-					Rect newNode = new Rect(freeNode);
+					MultiTexturePacker.Rect newNode = new MultiTexturePacker.Rect(freeNode);
 					newNode.y = usedNode.y + usedNode.height;
 					newNode.height = freeNode.y + freeNode.height - (usedNode.y + usedNode.height);
 					freeRectangles.add(newNode);
@@ -704,14 +704,14 @@ public class MaxRectsPacker implements Packer {
 			if (usedNode.y < freeNode.y + freeNode.height && usedNode.y + usedNode.height > freeNode.y) {
 				// New node at the left side of the used node.
 				if (usedNode.x > freeNode.x && usedNode.x < freeNode.x + freeNode.width) {
-					Rect newNode = new Rect(freeNode);
+					MultiTexturePacker.Rect newNode = new MultiTexturePacker.Rect(freeNode);
 					newNode.width = usedNode.x - newNode.x;
 					freeRectangles.add(newNode);
 				}
 
 				// New node at the right side of the used node.
 				if (usedNode.x + usedNode.width < freeNode.x + freeNode.width) {
-					Rect newNode = new Rect(freeNode);
+					MultiTexturePacker.Rect newNode = new MultiTexturePacker.Rect(freeNode);
 					newNode.x = usedNode.x + usedNode.width;
 					newNode.width = freeNode.x + freeNode.width - (usedNode.x + usedNode.width);
 					freeRectangles.add(newNode);
@@ -723,11 +723,11 @@ public class MaxRectsPacker implements Packer {
 
 		private void pruneFreeList () {
 			// Go through each pair and remove any rectangle that is redundant.
-			Array<Rect> freeRectangles = this.freeRectangles;
+			Array<MultiTexturePacker.Rect> freeRectangles = this.freeRectangles;
 			for (int i = 0, n = freeRectangles.size; i < n; i++)
 				for (int j = i + 1; j < n; ++j) {
-					Rect rect1 = freeRectangles.get(i);
-					Rect rect2 = freeRectangles.get(j);
+					MultiTexturePacker.Rect rect1 = freeRectangles.get(i);
+					MultiTexturePacker.Rect rect2 = freeRectangles.get(j);
 					if (isContainedIn(rect1, rect2)) {
 						freeRectangles.removeIndex(i);
 						--i;
@@ -742,7 +742,7 @@ public class MaxRectsPacker implements Packer {
 				}
 		}
 
-		private boolean isContainedIn (Rect a, Rect b) {
+		private boolean isContainedIn (MultiTexturePacker.Rect a, MultiTexturePacker.Rect b) {
 			return a.x >= b.x && a.y >= b.y && a.x + a.width <= b.x + b.width && a.y + a.height <= b.y + b.height;
 		}
 	}

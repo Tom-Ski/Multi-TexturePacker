@@ -14,7 +14,12 @@
  * limitations under the License.
  ******************************************************************************/
 
-package com.asidik.multitexturepacker;
+package com.badlogic.gdx.tools.texturepacker;
+
+import com.badlogic.gdx.utils.GdxRuntimeException;
+import com.badlogic.gdx.utils.Json;
+import com.badlogic.gdx.utils.JsonReader;
+import com.badlogic.gdx.utils.ObjectMap;
 
 import java.io.File;
 import java.io.FileReader;
@@ -24,15 +29,10 @@ import java.util.Comparator;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import com.badlogic.gdx.utils.GdxRuntimeException;
-import com.badlogic.gdx.utils.Json;
-import com.badlogic.gdx.utils.JsonReader;
-import com.badlogic.gdx.utils.ObjectMap;
-
-import com.asidik.multitexturepacker.MultiTexturePacker.*;
+import static com.badlogic.gdx.tools.texturepacker.TexturePacker.Settings;
 
 /** @author Nathan Sweet */
-public class TexturePackerFileProcessor extends FileProcessor {
+public class TextureBasicPackerFileProcessor extends FileProcessor {
 	private final Settings defaultSettings;
 	private ObjectMap<File, Settings> dirToSettings = new ObjectMap();
 	private Json json = new Json();
@@ -40,11 +40,11 @@ public class TexturePackerFileProcessor extends FileProcessor {
 	private File root;
 	ArrayList<File> ignoreDirs = new ArrayList();
 
-	public TexturePackerFileProcessor () {
+	public TextureBasicPackerFileProcessor () {
 		this(new Settings(), "pack.atlas");
 	}
 
-	public TexturePackerFileProcessor (Settings defaultSettings, String packFileName) {
+	public TextureBasicPackerFileProcessor (Settings defaultSettings, String packFileName) {
 		this.defaultSettings = defaultSettings;
 
 		if (packFileName.toLowerCase().endsWith(defaultSettings.atlasExtension.toLowerCase()))
@@ -236,13 +236,13 @@ public class TexturePackerFileProcessor extends FileProcessor {
 
 		// Pack.
 		if (!settings.silent) System.out.println(inputDir.inputFile.getName());
-		MultiTexturePacker packer = newTexturePacker(root, settings);
+		TexturePacker packer = newTexturePacker(root, settings);
 		for (Entry file : files)
 			packer.addImage(file.inputFile);
 		packer.pack(inputDir.outputDir, packFileName);
 	}
 
-	protected MultiTexturePacker newTexturePacker (File root, Settings settings) {
-		return new MultiTexturePacker(root, settings);
+	protected TexturePacker newTexturePacker (File root, Settings settings) {
+		return new TexturePacker(root, settings);
 	}
 }

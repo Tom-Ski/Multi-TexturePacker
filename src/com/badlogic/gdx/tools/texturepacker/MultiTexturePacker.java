@@ -14,7 +14,7 @@
  * limitations under the License.
  ******************************************************************************/
 
-package com.asidik.multitexturepacker;
+package com.badlogic.gdx.tools.texturepacker;
 
 import java.awt.*;
 import java.io.File;
@@ -42,6 +42,7 @@ import com.badlogic.gdx.graphics.Texture.TextureWrap;
 import com.badlogic.gdx.graphics.g2d.TextureAtlas.TextureAtlasData;
 import com.badlogic.gdx.graphics.g2d.TextureAtlas.TextureAtlasData.Region;
 import com.badlogic.gdx.math.MathUtils;
+import com.badlogic.gdx.tools.texturepacker.TexturePacker.Settings;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.FloatArray;
 import com.badlogic.gdx.utils.GdxRuntimeException;
@@ -50,7 +51,9 @@ import com.badlogic.gdx.utils.ObjectMap;
 
 import java.awt.image.BufferedImage;
 
-/** @author Nathan Sweet */
+import static com.badlogic.gdx.tools.texturepacker.TexturePacker.*;
+
+ /** @author Nathan Sweet */
 public class MultiTexturePacker {
 	private final Settings settings;
 	private final Packer packer;
@@ -59,7 +62,6 @@ public class MultiTexturePacker {
 	private File rootDir;
 	private ProgressListener progress;
 	private String[] originalInputs;
-	private String[] additionalInputs;
 	private String[] additionalOutputs;
 	private String[] additionalFileSuffixes;
 
@@ -305,10 +307,9 @@ public class MultiTexturePacker {
 			Graphics2D graphics = additionalGraphics.get(this.additionalOutputs[i]);
 
 			String suffix = this.additionalFileSuffixes[i];
-			String input = this.additionalInputs[i];
 			String originalInput = this.originalInputs[0];
 
-			BufferedImage additionalImage = rect.getImage(imageProcessor, originalInput, input, suffix);
+			BufferedImage additionalImage = rect.getImage(imageProcessor, originalInput, suffix);
 
 			if (additionalImage != null)
 				putImageIntoGraphics(page, bufferImage, graphics, rect, additionalImage);
@@ -583,7 +584,7 @@ public class MultiTexturePacker {
 			return imageProcessor.processImage(image, name).getImage(null);
 		}
 
-		public BufferedImage getImage (ImageProcessor imageProcessor, String originalDirToLookIn, String dirToLookIn, String fileSuffix) {
+		public BufferedImage getImage (ImageProcessor imageProcessor, String originalDirToLookIn, String fileSuffix) {
 			BufferedImage image = null;
 			File newFile;
 
@@ -595,9 +596,9 @@ public class MultiTexturePacker {
 
 			try {
 				if (isPatch) {
-					newFile = new File(dirToLookIn, name + indexString +fileSuffix + ".9" + ".png");
+					newFile = new File(originalDirToLookIn, name + indexString + fileSuffix + ".9" + ".png");
 				} else {
-					newFile = new File(dirToLookIn, name + indexString + fileSuffix + ".png");
+					newFile = new File(originalDirToLookIn, name + indexString + fileSuffix + ".png");
 				}
 
 				image = ImageIO.read(newFile);
@@ -698,30 +699,18 @@ public class MultiTexturePacker {
 		}
 	}
 
-	static public enum Resampling {
-		nearest(RenderingHints.VALUE_INTERPOLATION_NEAREST_NEIGHBOR), //
-		bilinear(RenderingHints.VALUE_INTERPOLATION_BILINEAR), //
-		bicubic(RenderingHints.VALUE_INTERPOLATION_BICUBIC);
-
-		final Object value;
-
-		Resampling (Object value) {
-			this.value = value;
-		}
-	}
-
 	/** @param input Directory containing individual images to be packed.
 	 * @param output Directory where the pack file and page images will be written.
 	 * @param packFileName The name of the pack file. Also used to name the page images.
 	 * @param progress May be null. */
-	static public void process (Settings settings, String input, String output, String packFileName, String[] additionalInputs, String[] additionalFileSuffixes, String[] additionalOutputs,
+	static public void process (Settings settings, String input, String output, String packFileName, String[] additionalFileSuffixes, String[] additionalOutputs,
 		final ProgressListener progress) {
 		try {
 			TexturePackerFileProcessor processor = new TexturePackerFileProcessor(settings, packFileName) {
 				protected MultiTexturePacker newTexturePacker (File root, Settings settings) {
 					MultiTexturePacker packer = super.newTexturePacker(root, settings);
 					packer.setOriginals(input);
-					packer.setAdditionals(additionalInputs, additionalOutputs, additionalFileSuffixes);
+					packer.setAdditionals(additionalOutputs, additionalFileSuffixes);
 					packer.setProgressListener(progress);
 					return packer;
 				}
@@ -747,13 +736,12 @@ public class MultiTexturePacker {
 		this.originalInputs = new String[] {input};
 	}
 
-	private void setAdditionals (String[] additionalInputs, String[] additionalOutputs, String[] additionalFileSuffixes) {
-		int length = additionalInputs.length;
-		if (additionalOutputs.length != length || additionalFileSuffixes.length != length) {
+	private void setAdditionals (String[] additionalOutputs, String[] additionalFileSuffixes) {
+		int length = additionalOutputs.length;
+		if (additionalFileSuffixes.length != length) {
 			throw new GdxRuntimeException("Additionals not valid");
 		}
 
-		this.additionalInputs = additionalInputs;
 		this.additionalOutputs = additionalOutputs;
 		this.additionalFileSuffixes = additionalFileSuffixes;
 	}
@@ -795,9 +783,9 @@ public class MultiTexturePacker {
 		return false;
 	}
 
-	static public boolean processIfModified (Settings settings, String input, String output, String packFileName, String[] additionalTextures, String[] additionalSuffixes, String[] additionalOutputs) {
+	static public boolean processIfModified (Settings settings, String input, String output, String packFileName, String[] additionalSuffixes, String[] additionalOutputs) {
 		if (isModified(input, output, packFileName, settings)) {
-				process(settings, input, output, packFileName, additionalTextures, additionalSuffixes, additionalOutputs, null);
+				process(settings, input, output, packFileName, additionalSuffixes, additionalOutputs, null);
 			return true;
 		}
 		return false;
@@ -816,165 +804,18 @@ public class MultiTexturePacker {
 		BufferedImage image;
 	}
 
-	static public abstract class ProgressListener {
-		private float total, scale = 1, lastUpdate;
-		private final FloatArray portions = new FloatArray(8);
-		volatile boolean cancel;
-
-		public void reset () {
-			scale = 1;
-			total = 0;
-			progress(total);
-		}
-
-		public void start (float portion) {
-			if (portion == 0) throw new IllegalArgumentException("portion cannot be 0.");
-			portions.add(lastUpdate);
-			portions.add(scale * portion);
-			portions.add(scale);
-			scale *= portion;
-		}
-
-		/** Returns true if cancelled. */
-		public boolean update (int current, int total) {
-			if (total == 0) throw new IllegalArgumentException("total cannot be 0.");
-			update(current / (float)total);
-			return isCancelled();
-		}
-
-		public void update (float percent) {
-			lastUpdate = portions.get(portions.size - 3) + portions.get(portions.size - 2) * percent;
-			progress(lastUpdate);
-		}
-
-		public void end () {
-			scale = portions.pop();
-			float portion = portions.pop();
-			lastUpdate = portions.pop() + portion;
-			progress(lastUpdate);
-		}
-
-		public void cancel () {
-			cancel = true;
-		}
-
-		public boolean isCancelled () {
-			return cancel;
-		}
-
-		abstract public void progress (float progress);
-	}
-
-	/** @author Nathan Sweet */
-	static public class Settings {
-		public boolean pot = true;
-		public boolean multipleOfFour;
-		public int paddingX = 2, paddingY = 2;
-		public boolean edgePadding = true;
-		public boolean duplicatePadding = false;
-		public boolean rotation;
-		public int minWidth = 16, minHeight = 16;
-		public int maxWidth = 1024, maxHeight = 1024;
-		public boolean square = false;
-		public boolean stripWhitespaceX, stripWhitespaceY;
-		public int alphaThreshold;
-		public TextureFilter filterMin = TextureFilter.Nearest, filterMag = TextureFilter.Nearest;
-		public TextureWrap wrapX = TextureWrap.ClampToEdge, wrapY = TextureWrap.ClampToEdge;
-		public Format format = Format.RGBA8888;
-		public boolean alias = true;
-		public String outputFormat = "png";
-		public float jpegQuality = 0.9f;
-		public boolean ignoreBlankImages = true;
-		public boolean fast;
-		public boolean debug;
-		public boolean silent;
-		public boolean combineSubdirectories;
-		public boolean ignore;
-		public boolean flattenPaths;
-		public boolean premultiplyAlpha;
-		public boolean useIndexes = true;
-		public boolean bleed = true;
-		public int bleedIterations = 2;
-		public boolean limitMemory = true;
-		public boolean grid;
-		public float[] scale = {1};
-		public String[] scaleSuffix = {""};
-		public Resampling[] scaleResampling = {Resampling.bicubic};
-		public String atlasExtension = ".atlas";
-
-		public Settings () {
-		}
-
-		/** @see #set(Settings) */
-		public Settings (Settings settings) {
-			set(settings);
-		}
-
-		/** Copies values from another instance to the current one */
-		public void set (Settings settings) {
-			fast = settings.fast;
-			rotation = settings.rotation;
-			pot = settings.pot;
-			multipleOfFour = settings.multipleOfFour;
-			minWidth = settings.minWidth;
-			minHeight = settings.minHeight;
-			maxWidth = settings.maxWidth;
-			maxHeight = settings.maxHeight;
-			paddingX = settings.paddingX;
-			paddingY = settings.paddingY;
-			edgePadding = settings.edgePadding;
-			duplicatePadding = settings.duplicatePadding;
-			alphaThreshold = settings.alphaThreshold;
-			ignoreBlankImages = settings.ignoreBlankImages;
-			stripWhitespaceX = settings.stripWhitespaceX;
-			stripWhitespaceY = settings.stripWhitespaceY;
-			alias = settings.alias;
-			format = settings.format;
-			jpegQuality = settings.jpegQuality;
-			outputFormat = settings.outputFormat;
-			filterMin = settings.filterMin;
-			filterMag = settings.filterMag;
-			wrapX = settings.wrapX;
-			wrapY = settings.wrapY;
-			debug = settings.debug;
-			silent = settings.silent;
-			combineSubdirectories = settings.combineSubdirectories;
-			ignore = settings.ignore;
-			flattenPaths = settings.flattenPaths;
-			premultiplyAlpha = settings.premultiplyAlpha;
-			square = settings.square;
-			useIndexes = settings.useIndexes;
-			bleed = settings.bleed;
-			bleedIterations = settings.bleedIterations;
-			limitMemory = settings.limitMemory;
-			grid = settings.grid;
-			scale = Arrays.copyOf(settings.scale, settings.scale.length);
-			scaleSuffix = Arrays.copyOf(settings.scaleSuffix, settings.scaleSuffix.length);
-			scaleResampling = Arrays.copyOf(settings.scaleResampling, settings.scaleResampling.length);
-			atlasExtension = settings.atlasExtension;
-		}
-
-		public String getScaledPackFileName (String packFileName, int scaleIndex) {
-			// Use suffix if not empty string.
-			if (scaleSuffix[scaleIndex].length() > 0)
-				packFileName += scaleSuffix[scaleIndex];
-			else {
-				// Otherwise if scale != 1 or multiple scales, use subdirectory.
-				float scaleValue = scale[scaleIndex];
-				if (scale.length != 1) {
-					packFileName = (scaleValue == (int)scaleValue ? Integer.toString((int)scaleValue) : Float.toString(scaleValue))
-						+ "/" + packFileName;
-				}
-			}
-			return packFileName;
-		}
-	}
-
 	static public void main (String[] args) throws Exception {
 		Settings settings = null;
 		String input = null, output = null, packFileName = "pack.atlas";
 
+		String[] additionalFileSuffixes = null;
+		String[] additionalOutputs = null;
+
 		switch (args.length) {
+		case 6:
+			additionalOutputs = args[5].split(",");
+		case 5:
+			additionalFileSuffixes = args[4].split(",");
 		case 4:
 			settings = new Json().fromJson(Settings.class, new FileReader(args[3]));
 		case 3:
@@ -985,7 +826,7 @@ public class MultiTexturePacker {
 			input = args[0];
 			break;
 		default:
-			System.out.println("Usage: inputDir [outputDir] [packFileName] [settingsFileName]");
+			System.out.println("Usage: inputDir [outputDir] [packFileName] [settingsFileName] [additionalSuffixes] [additionalOutputs]");
 			System.exit(0);
 		}
 
@@ -995,6 +836,6 @@ public class MultiTexturePacker {
 		}
 		if (settings == null) settings = new Settings();
 
-		//process(settings, input, output, packFileName);
+		processIfModified(settings, input, output, packFileName, additionalFileSuffixes, additionalOutputs);
 	}
 }
