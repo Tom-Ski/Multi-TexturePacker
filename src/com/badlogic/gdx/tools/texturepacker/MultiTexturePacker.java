@@ -19,11 +19,9 @@ package com.badlogic.gdx.tools.texturepacker;
 import java.awt.*;
 import java.io.File;
 import java.io.FileOutputStream;
-import java.io.FileReader;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
-import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -44,9 +42,7 @@ import com.badlogic.gdx.graphics.g2d.TextureAtlas.TextureAtlasData.Region;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.tools.texturepacker.TexturePacker.Settings;
 import com.badlogic.gdx.utils.Array;
-import com.badlogic.gdx.utils.FloatArray;
 import com.badlogic.gdx.utils.GdxRuntimeException;
-import com.badlogic.gdx.utils.Json;
 import com.badlogic.gdx.utils.ObjectMap;
 
 import java.awt.image.BufferedImage;
@@ -543,13 +539,14 @@ public class MultiTexturePacker {
 		public int[] splits;
 		public int[] pads;
 		public boolean canRotate = true;
+		public boolean isStripped = false;
 
 		private boolean isPatch;
 		private BufferedImage image;
 		private File file;
 		int score1, score2;
 
-		Rect (BufferedImage source, int left, int top, int newWidth, int newHeight, boolean isPatch) {
+		Rect (BufferedImage source, int left, int top, int newWidth, int newHeight, boolean isPatch, boolean isStripped) {
 			image = new BufferedImage(source.getColorModel(),
 				source.getRaster().createWritableChild(left, top, newWidth, newHeight, 0, 0, null),
 				source.getColorModel().isAlphaPremultiplied(), null);
@@ -562,6 +559,7 @@ public class MultiTexturePacker {
 			width = newWidth;
 			height = newHeight;
 			this.isPatch = isPatch;
+			this.isStripped = isStripped;
 		}
 
 		/** Clears the image for this rect, which will be loaded from the specified file by {@link #getImage(ImageProcessor)}. */
@@ -582,7 +580,8 @@ public class MultiTexturePacker {
 			if (image == null) throw new RuntimeException("Unable to read image: " + file);
 			String name = this.name;
 			if (isPatch) name += ".9";
-			return imageProcessor.processImage(image, name, false).getImage(null);
+
+			return imageProcessor.processImage(image, name, !isStripped).getImage(null);
 		}
 
 		public BufferedImage getImage (ImageProcessor imageProcessor, String originalDirToLookIn, String fileSuffix) {
@@ -594,6 +593,7 @@ public class MultiTexturePacker {
 			if (index != -1) {
 				indexString = "_" + index;
 			}
+
 
 			try {
 				if (isPatch) {
@@ -636,7 +636,7 @@ public class MultiTexturePacker {
 
 			String name = this.name;
 			if (isPatch) name += ".9";
-			return imageProcessor.processImage(image, name, false).getImage(null);
+			return imageProcessor.processImage(image, name, !isStripped).getImage(null);
 		}
 
 		Rect () {
