@@ -19,9 +19,11 @@ package com.badlogic.gdx.tools.texturepacker;
 import java.awt.*;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.FileReader;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -42,7 +44,9 @@ import com.badlogic.gdx.graphics.g2d.TextureAtlas.TextureAtlasData.Region;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.tools.texturepacker.TexturePacker.Settings;
 import com.badlogic.gdx.utils.Array;
+import com.badlogic.gdx.utils.FloatArray;
 import com.badlogic.gdx.utils.GdxRuntimeException;
+import com.badlogic.gdx.utils.Json;
 import com.badlogic.gdx.utils.ObjectMap;
 
 import java.awt.image.BufferedImage;
@@ -594,7 +598,6 @@ public class MultiTexturePacker {
 				indexString = "_" + index;
 			}
 
-
 			try {
 				if (isPatch) {
 					newFile = new File(originalDirToLookIn, name + indexString + fileSuffix + ".9" + ".png");
@@ -785,8 +788,11 @@ public class MultiTexturePacker {
 	}
 
 	static public boolean processIfModified (Settings settings, String input, String output, String packFileName, String[] additionalSuffixes, String[] additionalOutputs) {
-		process(settings, input, output, packFileName, additionalSuffixes, additionalOutputs, null);
-		return true;
+		if (isModified(input, output, packFileName, settings)) {
+				process(settings, input, output, packFileName, additionalSuffixes, additionalOutputs, null);
+			return true;
+		}
+		return false;
 	}
 
 	static public interface Packer {
@@ -804,33 +810,37 @@ public class MultiTexturePacker {
 	}
 
 	static public void main (String[] args) throws Exception {
-		Settings settings = new Settings();
+		Settings settings = null;
+		String input = null, output = null, packFileName = "pack.atlas";
 
-		settings.combineSubdirectories = true;
-		settings.maxWidth = 2048;
-		settings.maxHeight = 2048;
-		settings.edgePadding = true;
-		settings.duplicatePadding = true;
-		settings.filterMag = TextureFilter.Linear;
-		settings.filterMin = TextureFilter.Linear;
-		settings.paddingX = 2;
-		settings.paddingY = 2;
+		String[] additionalFileSuffixes = null;
+		String[] additionalOutputs = null;
 
-		settings.stripWhitespaceX = true;
-		settings.stripWhitespaceY = true;
+		switch (args.length) {
+		case 6:
+			additionalOutputs = args[5].split(",");
+		case 5:
+			additionalFileSuffixes = args[4].split(",");
+		case 4:
+			settings = new Json().fromJson(Settings.class, new FileReader(args[3]));
+		case 3:
+			packFileName = args[2];
+		case 2:
+			output = args[1];
+		case 1:
+			input = args[0];
+			break;
+		default:
+			System.out.println("Usage: inputDir [outputDir] [packFileName] [settingsFileName] [additionalSuffixes] [additionalOutputs]");
+			System.exit(0);
+		}
 
-		File file = wrapFile("gameAtlas");
-		File raws = wrapFile("exportAssets/gameRaws/raws");
-		File target = wrapFile("runtime/assets/processed");
+		if (output == null) {
+			File inputFile = new File(input);
+			output = new File(inputFile.getParentFile(), inputFile.getName() + "-packed").getAbsolutePath();
+		}
+		if (settings == null) settings = new Settings();
 
-		processIfModified(settings, raws.getAbsolutePath(), target.getAbsolutePath(), "gameAtlas", new String[]{"_emissive"}, new String[]{"runtime/assets/processedEmissive"});
+		processIfModified(settings, input, output, packFileName, additionalFileSuffixes, additionalOutputs);
 	}
-
-	 private static File wrapFile(String path) {
-		 if (new File(path).isAbsolute()) {
-			 return new File(path);
-		 } else {
-			 return new File(System.getProperty("user.dir") + File.separator + path);
-		 }
-	 }
 }
