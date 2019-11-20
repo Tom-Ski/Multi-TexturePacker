@@ -138,7 +138,7 @@ public class MultiTexturePacker {
                 	if (additionalFileSuffixes.length > 0) {
 						String name = inputImage.file.getAbsolutePath();
 						String[] split = name.split("\\.");
-						StringBuilder emissiveName = new StringBuilder(split[0] + additionalFileSuffixes[0]);
+						StringBuilder emissiveName = new StringBuilder(split[0] + "_emissive");
 						for (int j = 1; j < split.length; j++) {
 							emissiveName.append(".").append(split[j]);
 						}
