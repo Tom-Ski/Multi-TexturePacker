@@ -63,7 +63,7 @@ public class ImageProcessor {
 	}
 
 	/** The image won't be kept in-memory during packing if {@link Settings#limitMemory} is true. */
-	public void addImage (File file) {
+	public void addImage (File file, boolean isMultiTexture) {
 		BufferedImage image;
 		try {
 			image = ImageIO.read(file);
@@ -84,14 +84,14 @@ public class ImageProcessor {
 		int dotIndex = name.lastIndexOf('.');
 		if (dotIndex != -1) name = name.substring(0, dotIndex);
 
-		MultiTexturePacker.Rect rect = addImage(image, name);
+		MultiTexturePacker.Rect rect = addImage(image, name, isMultiTexture);
 		if (rect != null && settings.limitMemory) rect.unloadImage(file);
 	}
 
 	/** The image will be kept in-memory during packing.
-	 * @see #addImage(File) */
-	public MultiTexturePacker.Rect addImage (BufferedImage image, String name) {
-		MultiTexturePacker.Rect rect = processImage(image, name);
+	 * @see #addImage(File, boolean) */
+	public MultiTexturePacker.Rect addImage (BufferedImage image, String name, boolean isMultiTexture) {
+		MultiTexturePacker.Rect rect = processImage(image, name, isMultiTexture);
 
 		if (rect == null) {
 			if (!settings.silent) System.out.println("Ignoring blank input image: " + name);
@@ -135,7 +135,7 @@ public class ImageProcessor {
 	}
 
 	/** Returns a rect for the image describing the texture region to be packed, or null if the image should not be packed. */
-	MultiTexturePacker.Rect processImage (BufferedImage image, String name) {
+	MultiTexturePacker.Rect processImage (BufferedImage image, String name, boolean skipStripping) {
 		if (scale <= 0) throw new IllegalArgumentException("scale cannot be <= 0: " + scale);
 
 		int width = image.getWidth(), height = image.getHeight();
@@ -179,9 +179,9 @@ public class ImageProcessor {
 			image = newImage;
 		}
 
-		if (isPatch) {
+		if (isPatch || skipStripping) {
 			// Ninepatches aren't rotated or whitespace stripped.
-			rect = new MultiTexturePacker.Rect(image, 0, 0, width, height, true);
+			rect = new MultiTexturePacker.Rect(image, 0, 0, width, height, isPatch, false);
 			rect.splits = splits;
 			rect.pads = pads;
 			rect.canRotate = false;
@@ -209,7 +209,7 @@ public class ImageProcessor {
 	private MultiTexturePacker.Rect stripWhitespace (BufferedImage source) {
 		WritableRaster alphaRaster = source.getAlphaRaster();
 		if (alphaRaster == null || (!settings.stripWhitespaceX && !settings.stripWhitespaceY))
-			return new MultiTexturePacker.Rect(source, 0, 0, source.getWidth(), source.getHeight(), false);
+			return new MultiTexturePacker.Rect(source, 0, 0, source.getWidth(), source.getHeight(), false, false);
 		final byte[] a = new byte[1];
 		int top = 0;
 		int bottom = source.getHeight();
@@ -275,9 +275,9 @@ public class ImageProcessor {
 			if (settings.ignoreBlankImages)
 				return null;
 			else
-				return new MultiTexturePacker.Rect(emptyImage, 0, 0, 1, 1, false);
+				return new MultiTexturePacker.Rect(emptyImage, 0, 0, 1, 1, false, false);
 		}
-		return new MultiTexturePacker.Rect(source, left, top, newWidth, newHeight, false);
+		return new MultiTexturePacker.Rect(source, left, top, newWidth, newHeight, false, true);
 	}
 
 	static private String splitError (int x, int y, int[] rgba, String name) {

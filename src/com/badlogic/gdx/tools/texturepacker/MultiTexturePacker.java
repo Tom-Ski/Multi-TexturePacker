@@ -134,10 +134,27 @@ public class MultiTexturePacker {
 
 			for (int ii = 0, nn = inputImages.size; ii < nn; ii++) {
 				InputImage inputImage = inputImages.get(ii);
-				if (inputImage.file != null)
-					imageProcessor.addImage(inputImage.file);
+                if (inputImage.file != null) {
+                	if (additionalFileSuffixes.length > 0) {
+						String name = inputImage.file.getAbsolutePath();
+						String[] split = name.split("\\.");
+						StringBuilder emissiveName = new StringBuilder(split[0] + "_emissive");
+						for (int j = 1; j < split.length; j++) {
+							emissiveName.append(".").append(split[j]);
+						}
+						File file = new File(emissiveName.toString());
+						try {
+							ImageIO.read(file);
+							imageProcessor.addImage(inputImage.file, true);
+						} catch (Exception e) {
+							imageProcessor.addImage(inputImage.file, false);
+						}
+					} else {
+						imageProcessor.addImage(inputImage.file, false);
+					}
+                }
 				else
-					imageProcessor.addImage(inputImage.image, inputImage.name);
+					imageProcessor.addImage(inputImage.image, inputImage.name, true);
 				if (progress.update(ii + 1, nn)) return;
 			}
 			progress.end();
@@ -542,13 +559,14 @@ public class MultiTexturePacker {
 		public int[] splits;
 		public int[] pads;
 		public boolean canRotate = true;
+		public boolean isStripped = false;
 
 		private boolean isPatch;
 		private BufferedImage image;
 		private File file;
 		int score1, score2;
 
-		Rect (BufferedImage source, int left, int top, int newWidth, int newHeight, boolean isPatch) {
+		Rect (BufferedImage source, int left, int top, int newWidth, int newHeight, boolean isPatch, boolean isStripped) {
 			image = new BufferedImage(source.getColorModel(),
 				source.getRaster().createWritableChild(left, top, newWidth, newHeight, 0, 0, null),
 				source.getColorModel().isAlphaPremultiplied(), null);
@@ -561,6 +579,7 @@ public class MultiTexturePacker {
 			width = newWidth;
 			height = newHeight;
 			this.isPatch = isPatch;
+			this.isStripped = isStripped;
 		}
 
 		/** Clears the image for this rect, which will be loaded from the specified file by {@link #getImage(ImageProcessor)}. */
@@ -581,7 +600,8 @@ public class MultiTexturePacker {
 			if (image == null) throw new RuntimeException("Unable to read image: " + file);
 			String name = this.name;
 			if (isPatch) name += ".9";
-			return imageProcessor.processImage(image, name).getImage(null);
+
+			return imageProcessor.processImage(image, name, !isStripped).getImage(null);
 		}
 
 		public BufferedImage getImage (ImageProcessor imageProcessor, String originalDirToLookIn, String fileSuffix) {
@@ -609,7 +629,7 @@ public class MultiTexturePacker {
 				if (isPatch) {
 					newFile = new File(originalDirToLookIn, name + indexString + ".9" + ".png");
 				} else {
-					newFile = new File(originalDirToLookIn, name + indexString+ ".png");
+					newFile = new File(originalDirToLookIn, name + indexString + ".png");
 				}
 
 				try {
@@ -635,7 +655,7 @@ public class MultiTexturePacker {
 
 			String name = this.name;
 			if (isPatch) name += ".9";
-			return imageProcessor.processImage(image, name).getImage(null);
+			return imageProcessor.processImage(image, name, !isStripped).getImage(null);
 		}
 
 		Rect () {
