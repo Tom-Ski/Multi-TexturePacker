@@ -162,9 +162,9 @@ public class TexturePacker {
 			for (int ii = 0, nn = inputImages.size; ii < nn; ii++, progress.count++) {
 				InputImage inputImage = inputImages.get(ii);
 				if (inputImage.file != null)
-					imageProcessor.addImage(inputImage.file);
+					imageProcessor.addImage(inputImage.file, null);
 				else
-					imageProcessor.addImage(inputImage.image, inputImage.name);
+					imageProcessor.addImage(inputImage.image, inputImage.name, null);
 				if (progress.update(ii + 1, nn)) return;
 			}
 			progress.end();

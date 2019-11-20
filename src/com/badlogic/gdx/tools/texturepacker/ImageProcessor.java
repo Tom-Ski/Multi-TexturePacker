@@ -63,7 +63,7 @@ public class ImageProcessor {
 	}
 
 	/** The image won't be kept in-memory during packing if {@link Settings#limitMemory} is true. */
-	public void addImage (File file) {
+	public void addImage (File file, File twinAsset) {
 		BufferedImage image;
 		try {
 			image = ImageIO.read(file);
@@ -84,14 +84,14 @@ public class ImageProcessor {
 		int dotIndex = name.lastIndexOf('.');
 		if (dotIndex != -1) name = name.substring(0, dotIndex);
 
-		MultiTexturePacker.Rect rect = addImage(image, name);
+		MultiTexturePacker.Rect rect = addImage(image, name, twinAsset);
 		if (rect != null && settings.limitMemory) rect.unloadImage(file);
 	}
 
 	/** The image will be kept in-memory during packing.
-	 * @see #addImage(File) */
-	public MultiTexturePacker.Rect addImage (BufferedImage image, String name) {
-		MultiTexturePacker.Rect rect = processImage(image, name);
+	 * @see #addImage(File, File) */
+	public MultiTexturePacker.Rect addImage (BufferedImage image, String name, File twinAsset) {
+		MultiTexturePacker.Rect rect = processImage(image, name, twinAsset != null);
 
 		if (rect == null) {
 			if (!settings.silent) System.out.println("Ignoring blank input image: " + name);
@@ -135,7 +135,7 @@ public class ImageProcessor {
 	}
 
 	/** Returns a rect for the image describing the texture region to be packed, or null if the image should not be packed. */
-	MultiTexturePacker.Rect processImage (BufferedImage image, String name) {
+	MultiTexturePacker.Rect processImage (BufferedImage image, String name, boolean hasTwinAsset) {
 		if (scale <= 0) throw new IllegalArgumentException("scale cannot be <= 0: " + scale);
 
 		int width = image.getWidth(), height = image.getHeight();
@@ -179,9 +179,9 @@ public class ImageProcessor {
 			image = newImage;
 		}
 
-		if (isPatch) {
+		if (isPatch || hasTwinAsset) {
 			// Ninepatches aren't rotated or whitespace stripped.
-			rect = new MultiTexturePacker.Rect(image, 0, 0, width, height, true);
+			rect = new MultiTexturePacker.Rect(image, 0, 0, width, height, isPatch);
 			rect.splits = splits;
 			rect.pads = pads;
 			rect.canRotate = false;

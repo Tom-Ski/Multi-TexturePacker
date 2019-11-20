@@ -95,9 +95,10 @@ public class MultiTexturePacker {
 		this(null, settings);
 	}
 
-	public void addImage (File file) {
+	public void addImage (File file, File twinFile) {
 		InputImage inputImage = new InputImage();
 		inputImage.file = file;
+		inputImage.twinFile = twinFile;
 		inputImages.add(inputImage);
 	}
 
@@ -135,9 +136,9 @@ public class MultiTexturePacker {
 			for (int ii = 0, nn = inputImages.size; ii < nn; ii++) {
 				InputImage inputImage = inputImages.get(ii);
 				if (inputImage.file != null)
-					imageProcessor.addImage(inputImage.file);
+					imageProcessor.addImage(inputImage.file, inputImage.twinFile);
 				else
-					imageProcessor.addImage(inputImage.image, inputImage.name);
+					imageProcessor.addImage(inputImage.image, inputImage.name, inputImage.twinFile);
 				if (progress.update(ii + 1, nn)) return;
 			}
 			progress.end();
@@ -581,7 +582,7 @@ public class MultiTexturePacker {
 			if (image == null) throw new RuntimeException("Unable to read image: " + file);
 			String name = this.name;
 			if (isPatch) name += ".9";
-			return imageProcessor.processImage(image, name).getImage(null);
+			return imageProcessor.processImage(image, name, false).getImage(null);
 		}
 
 		public BufferedImage getImage (ImageProcessor imageProcessor, String originalDirToLookIn, String fileSuffix) {
@@ -609,7 +610,7 @@ public class MultiTexturePacker {
 				if (isPatch) {
 					newFile = new File(originalDirToLookIn, name + indexString + ".9" + ".png");
 				} else {
-					newFile = new File(originalDirToLookIn, name + indexString+ ".png");
+					newFile = new File(originalDirToLookIn, name + indexString + ".png");
 				}
 
 				try {
@@ -635,7 +636,7 @@ public class MultiTexturePacker {
 
 			String name = this.name;
 			if (isPatch) name += ".9";
-			return imageProcessor.processImage(image, name).getImage(null);
+			return imageProcessor.processImage(image, name, false).getImage(null);
 		}
 
 		Rect () {
@@ -784,11 +785,8 @@ public class MultiTexturePacker {
 	}
 
 	static public boolean processIfModified (Settings settings, String input, String output, String packFileName, String[] additionalSuffixes, String[] additionalOutputs) {
-		if (isModified(input, output, packFileName, settings)) {
-				process(settings, input, output, packFileName, additionalSuffixes, additionalOutputs, null);
-			return true;
-		}
-		return false;
+		process(settings, input, output, packFileName, additionalSuffixes, additionalOutputs, null);
+		return true;
 	}
 
 	static public interface Packer {
@@ -802,40 +800,37 @@ public class MultiTexturePacker {
 		File file;
 		String name;
 		BufferedImage image;
+		File twinFile;
 	}
 
 	static public void main (String[] args) throws Exception {
-		Settings settings = null;
-		String input = null, output = null, packFileName = "pack.atlas";
+		Settings settings = new Settings();
 
-		String[] additionalFileSuffixes = null;
-		String[] additionalOutputs = null;
+		settings.combineSubdirectories = true;
+		settings.maxWidth = 2048;
+		settings.maxHeight = 2048;
+		settings.edgePadding = true;
+		settings.duplicatePadding = true;
+		settings.filterMag = TextureFilter.Linear;
+		settings.filterMin = TextureFilter.Linear;
+		settings.paddingX = 2;
+		settings.paddingY = 2;
 
-		switch (args.length) {
-		case 6:
-			additionalOutputs = args[5].split(",");
-		case 5:
-			additionalFileSuffixes = args[4].split(",");
-		case 4:
-			settings = new Json().fromJson(Settings.class, new FileReader(args[3]));
-		case 3:
-			packFileName = args[2];
-		case 2:
-			output = args[1];
-		case 1:
-			input = args[0];
-			break;
-		default:
-			System.out.println("Usage: inputDir [outputDir] [packFileName] [settingsFileName] [additionalSuffixes] [additionalOutputs]");
-			System.exit(0);
-		}
+		settings.stripWhitespaceX = true;
+		settings.stripWhitespaceY = true;
 
-		if (output == null) {
-			File inputFile = new File(input);
-			output = new File(inputFile.getParentFile(), inputFile.getName() + "-packed").getAbsolutePath();
-		}
-		if (settings == null) settings = new Settings();
+		File file = wrapFile("gameAtlas");
+		File raws = wrapFile("exportAssets/gameRaws/raws");
+		File target = wrapFile("runtime/assets/processed");
 
-		processIfModified(settings, input, output, packFileName, additionalFileSuffixes, additionalOutputs);
+		processIfModified(settings, raws.getAbsolutePath(), target.getAbsolutePath(), "gameAtlas", new String[]{"_emissive"}, new String[]{"runtime/assets/processedEmissive"});
 	}
+
+	 private static File wrapFile(String path) {
+		 if (new File(path).isAbsolute()) {
+			 return new File(path);
+		 } else {
+			 return new File(System.getProperty("user.dir") + File.separator + path);
+		 }
+	 }
 }

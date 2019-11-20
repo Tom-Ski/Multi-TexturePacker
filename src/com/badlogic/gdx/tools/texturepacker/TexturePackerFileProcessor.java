@@ -238,10 +238,22 @@ public class TexturePackerFileProcessor extends FileProcessor {
 		if (!settings.silent) System.out.println(inputDir.inputFile.getName());
 		MultiTexturePacker packer = newTexturePacker(root, settings);
 		for (Entry file : files) {
-			if (file.inputFile.getName().contains("_emissive")) {
+			String fileName = file.inputFile.getName();
+			if (fileName.contains("_emissive")) {
 				continue;
 			}
-			packer.addImage(file.inputFile);
+
+			File twinFile = null;
+			String[] split = fileName.split("\\.");
+			for (int i = 0; i < files.size(); i++) {
+				Entry temp = files.get(i);
+				String iterableFileName = temp.inputFile.getName();
+				if (iterableFileName.contains(split[0] + "_emissive")) {
+					twinFile = temp.inputFile;
+					break;
+				}
+			}
+			packer.addImage(file.inputFile, twinFile);
 		}
 		packer.pack(inputDir.outputDir, packFileName);
 	}
