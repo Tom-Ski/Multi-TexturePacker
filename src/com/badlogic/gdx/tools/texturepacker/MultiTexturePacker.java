@@ -135,17 +135,21 @@ public class MultiTexturePacker {
 			for (int ii = 0, nn = inputImages.size; ii < nn; ii++) {
 				InputImage inputImage = inputImages.get(ii);
                 if (inputImage.file != null) {
-                    String name = inputImage.file.getAbsolutePath();
-                    String[] split = name.split("\\.");
-                    StringBuilder emissiveName = new StringBuilder(split[0] + "_emissive");
-                    for (int j = 1; j < split.length; j++) {
-                        emissiveName.append(".").append(split[j]);
-                    }
-					File file = new File(emissiveName.toString());
-                    try {
-                    	ImageIO.read(file);
-						imageProcessor.addImage(inputImage.file, true);
-					} catch (Exception e) {
+                	if (additionalFileSuffixes.length > 0) {
+						String name = inputImage.file.getAbsolutePath();
+						String[] split = name.split("\\.");
+						StringBuilder emissiveName = new StringBuilder(split[0] + additionalFileSuffixes[0]);
+						for (int j = 1; j < split.length; j++) {
+							emissiveName.append(".").append(split[j]);
+						}
+						File file = new File(emissiveName.toString());
+						try {
+							ImageIO.read(file);
+							imageProcessor.addImage(inputImage.file, true);
+						} catch (Exception e) {
+							imageProcessor.addImage(inputImage.file, false);
+						}
+					} else {
 						imageProcessor.addImage(inputImage.file, false);
 					}
                 }
