@@ -63,7 +63,7 @@ public class ImageProcessor {
 	}
 
 	/** The image won't be kept in-memory during packing if {@link Settings#limitMemory} is true. */
-	public void addImage (File file, File twinAsset) {
+	public void addImage (File file, boolean isMultiTexture) {
 		BufferedImage image;
 		try {
 			image = ImageIO.read(file);
@@ -84,14 +84,14 @@ public class ImageProcessor {
 		int dotIndex = name.lastIndexOf('.');
 		if (dotIndex != -1) name = name.substring(0, dotIndex);
 
-		MultiTexturePacker.Rect rect = addImage(image, name, twinAsset);
+		MultiTexturePacker.Rect rect = addImage(image, name, isMultiTexture);
 		if (rect != null && settings.limitMemory) rect.unloadImage(file);
 	}
 
 	/** The image will be kept in-memory during packing.
-	 * @see #addImage(File, File) */
-	public MultiTexturePacker.Rect addImage (BufferedImage image, String name, File twinAsset) {
-		MultiTexturePacker.Rect rect = processImage(image, name, twinAsset != null);
+	 * @see #addImage(File, boolean) */
+	public MultiTexturePacker.Rect addImage (BufferedImage image, String name, boolean isMultiTexture) {
+		MultiTexturePacker.Rect rect = processImage(image, name, isMultiTexture);
 
 		if (rect == null) {
 			if (!settings.silent) System.out.println("Ignoring blank input image: " + name);

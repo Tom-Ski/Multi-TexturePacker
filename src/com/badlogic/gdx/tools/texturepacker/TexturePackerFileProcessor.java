@@ -243,17 +243,7 @@ public class TexturePackerFileProcessor extends FileProcessor {
 				continue;
 			}
 
-			File twinFile = null;
-			String[] split = fileName.split("\\.");
-			for (int i = 0; i < files.size(); i++) {
-				Entry temp = files.get(i);
-				String iterableFileName = temp.inputFile.getName();
-				if (iterableFileName.contains(split[0] + "_emissive")) {
-					twinFile = temp.inputFile;
-					break;
-				}
-			}
-			packer.addImage(file.inputFile, twinFile);
+			packer.addImage(file.inputFile);
 		}
 		packer.pack(inputDir.outputDir, packFileName);
 	}

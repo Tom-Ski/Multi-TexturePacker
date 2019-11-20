@@ -95,10 +95,9 @@ public class MultiTexturePacker {
 		this(null, settings);
 	}
 
-	public void addImage (File file, File twinFile) {
+	public void addImage (File file) {
 		InputImage inputImage = new InputImage();
 		inputImage.file = file;
-		inputImage.twinFile = twinFile;
 		inputImages.add(inputImage);
 	}
 
@@ -135,10 +134,23 @@ public class MultiTexturePacker {
 
 			for (int ii = 0, nn = inputImages.size; ii < nn; ii++) {
 				InputImage inputImage = inputImages.get(ii);
-				if (inputImage.file != null)
-					imageProcessor.addImage(inputImage.file, inputImage.twinFile);
+                if (inputImage.file != null) {
+                    String name = inputImage.file.getAbsolutePath();
+                    String[] split = name.split("\\.");
+                    StringBuilder emissiveName = new StringBuilder(split[0] + "_emissive");
+                    for (int j = 1; j < split.length; j++) {
+                        emissiveName.append(".").append(split[j]);
+                    }
+					File file = new File(emissiveName.toString());
+                    try {
+                    	ImageIO.read(file);
+						imageProcessor.addImage(inputImage.file, true);
+					} catch (Exception e) {
+						imageProcessor.addImage(inputImage.file, false);
+					}
+                }
 				else
-					imageProcessor.addImage(inputImage.image, inputImage.name, inputImage.twinFile);
+					imageProcessor.addImage(inputImage.image, inputImage.name, true);
 				if (progress.update(ii + 1, nn)) return;
 			}
 			progress.end();
@@ -806,7 +818,6 @@ public class MultiTexturePacker {
 		File file;
 		String name;
 		BufferedImage image;
-		File twinFile;
 	}
 
 	static public void main (String[] args) throws Exception {
