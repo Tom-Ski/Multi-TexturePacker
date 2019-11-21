@@ -691,6 +691,7 @@ public class MultiTexturePacker {
 			score2 = rect.score2;
 			file = rect.file;
 			isPatch = rect.isPatch;
+			isStripped = rect.isStripped;
 		}
 
 		public int compareTo (Rect o) {
