@@ -179,12 +179,14 @@ public class ImageProcessor {
 			image = newImage;
 		}
 
-		if (isPatch || skipStripping) {
+		if (isPatch) {
 			// Ninepatches aren't rotated or whitespace stripped.
-			rect = new MultiTexturePacker.Rect(image, 0, 0, width, height, isPatch, false);
+			rect = new MultiTexturePacker.Rect(image, 0, 0, width, height, true, false);
 			rect.splits = splits;
 			rect.pads = pads;
 			rect.canRotate = false;
+		} else if (skipStripping) {
+			rect = new MultiTexturePacker.Rect(image, 0, 0, width, height, false, false);
 		} else {
 			rect = stripWhitespace(image);
 			if (rect == null) return null;
