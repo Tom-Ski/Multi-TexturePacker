@@ -63,7 +63,7 @@ public class ImageProcessor {
 	}
 
 	/** The image won't be kept in-memory during packing if {@link Settings#limitMemory} is true. */
-	public void addImage (File file, boolean isMultiTexture) {
+	public void addImage (File file, BufferedImage bufferedImage) {
 		BufferedImage image;
 		try {
 			image = ImageIO.read(file);
@@ -84,14 +84,14 @@ public class ImageProcessor {
 		int dotIndex = name.lastIndexOf('.');
 		if (dotIndex != -1) name = name.substring(0, dotIndex);
 
-		MultiTexturePacker.Rect rect = addImage(image, name, isMultiTexture);
+		MultiTexturePacker.Rect rect = addImage(image, name, bufferedImage);
 		if (rect != null && settings.limitMemory) rect.unloadImage(file);
 	}
 
 	/** The image will be kept in-memory during packing.
-	 * @see #addImage(File, boolean) */
-	public MultiTexturePacker.Rect addImage (BufferedImage image, String name, boolean isMultiTexture) {
-		MultiTexturePacker.Rect rect = processImage(image, name, isMultiTexture);
+	 * @see #addImage(File, BufferedImage) */
+	public MultiTexturePacker.Rect addImage (BufferedImage image, String name, BufferedImage multiImage) {
+		MultiTexturePacker.Rect rect = processImage(image, name, multiImage);
 
 		if (rect == null) {
 			if (!settings.silent) System.out.println("Ignoring blank input image: " + name);
@@ -135,7 +135,7 @@ public class ImageProcessor {
 	}
 
 	/** Returns a rect for the image describing the texture region to be packed, or null if the image should not be packed. */
-	MultiTexturePacker.Rect processImage (BufferedImage image, String name, boolean skipStripping) {
+	MultiTexturePacker.Rect processImage (BufferedImage image, String name, BufferedImage twinImage) {
 		if (scale <= 0) throw new IllegalArgumentException("scale cannot be <= 0: " + scale);
 
 		int width = image.getWidth(), height = image.getHeight();
@@ -181,14 +181,12 @@ public class ImageProcessor {
 
 		if (isPatch) {
 			// Ninepatches aren't rotated or whitespace stripped.
-			rect = new MultiTexturePacker.Rect(image, 0, 0, width, height, true, false);
+			rect = new MultiTexturePacker.Rect(image, 0, 0, width, height, true, twinImage);
 			rect.splits = splits;
 			rect.pads = pads;
 			rect.canRotate = false;
-		} else if (skipStripping) {
-			rect = new MultiTexturePacker.Rect(image, 0, 0, width, height, false, false);
 		} else {
-			rect = stripWhitespace(image);
+			rect = stripWhitespace(image, twinImage);
 			if (rect == null) return null;
 		}
 
@@ -208,10 +206,87 @@ public class ImageProcessor {
 	}
 
 	/** Strips whitespace and returns the rect, or null if the image should be ignored. */
-	private MultiTexturePacker.Rect stripWhitespace (BufferedImage source) {
-		WritableRaster alphaRaster = source.getAlphaRaster();
-		if (alphaRaster == null || (!settings.stripWhitespaceX && !settings.stripWhitespaceY))
-			return new MultiTexturePacker.Rect(source, 0, 0, source.getWidth(), source.getHeight(), false, false);
+	private MultiTexturePacker.Rect stripWhitespace (BufferedImage source, BufferedImage twinSource) {
+		WritableRaster sourceAlphaRaster = source.getAlphaRaster();
+		if (sourceAlphaRaster == null || (!settings.stripWhitespaceX && !settings.stripWhitespaceY))
+			return new MultiTexturePacker.Rect(source, 0, 0, source.getWidth(), source.getHeight(), false, twinSource);
+
+		int top;
+		int bottom;
+		int left;
+		int right;
+
+		if (twinSource != null && twinSource.getAlphaRaster() != null) {
+			WritableRaster twinAlphaRester = twinSource.getAlphaRaster();
+
+			int[] sourceTopAndBottom = getTopAndBottomForStrippedImage(source, sourceAlphaRaster);
+			int[] twinTopAndBottom = getTopAndBottomForStrippedImage(twinSource, twinAlphaRester);
+
+			top = Math.min(sourceTopAndBottom[0], twinTopAndBottom[0]);
+			bottom = Math.max(sourceTopAndBottom[1], twinTopAndBottom[1]);
+
+			int[] sourceLeftAndRight = getLeftAndRightForStrippedImage(source, sourceAlphaRaster, top, bottom);
+			int[] twinLeftAndRight = getLeftAndRightForStrippedImage(twinSource, twinAlphaRester, top, bottom);
+
+			left = Math.min(sourceLeftAndRight[0], twinLeftAndRight[0]);
+			right = Math.max(sourceLeftAndRight[1], twinLeftAndRight[1]);
+		} else {
+			int[] sourceTopAndBottom = getTopAndBottomForStrippedImage(source, sourceAlphaRaster);
+			top = sourceTopAndBottom[0];
+			bottom = sourceTopAndBottom[1];
+
+			int[] sourceLeftAndRight = getLeftAndRightForStrippedImage(source, sourceAlphaRaster, top, bottom);
+			left = sourceLeftAndRight[0];
+			right = sourceLeftAndRight[1];
+		}
+
+		int newWidth = right - left;
+		int newHeight = bottom - top;
+		if (newWidth <= 0 || newHeight <= 0) {
+			if (settings.ignoreBlankImages)
+				return null;
+			else
+				return new MultiTexturePacker.Rect(emptyImage, 0, 0, 1, 1, false, twinSource);
+		}
+		return new MultiTexturePacker.Rect(source, left, top, newWidth, newHeight, false, twinSource);
+	}
+
+	private int[] getLeftAndRightForStrippedImage (BufferedImage source, WritableRaster sourceAlphaRaster, int top, int bottom) {
+		final byte[] a = new byte[1];
+		int left = 0;
+		int right = source.getWidth();
+		if (settings.stripWhitespaceX) {
+			outer:
+			for (int x = 0; x < source.getWidth(); x++) {
+				for (int y = top; y < bottom; y++) {
+					sourceAlphaRaster.getDataElements(x, y, a);
+					int alpha = a[0];
+					if (alpha < 0) alpha += 256;
+					if (alpha > settings.alphaThreshold) break outer;
+				}
+				left++;
+			}
+			outer:
+			for (int x = source.getWidth(); --x >= left;) {
+				for (int y = top; y < bottom; y++) {
+					sourceAlphaRaster.getDataElements(x, y, a);
+					int alpha = a[0];
+					if (alpha < 0) alpha += 256;
+					if (alpha > settings.alphaThreshold) break outer;
+				}
+				right--;
+			}
+			// Leave 1px so nothing is copied into padding.
+			if (settings.duplicatePadding) {
+				if (left > 0) left--;
+				if (right < source.getWidth()) right++;
+			}
+		}
+
+		return new int[]{left, right};
+	}
+
+	private int[] getTopAndBottomForStrippedImage (BufferedImage source, WritableRaster alphaRaster) {
 		final byte[] a = new byte[1];
 		int top = 0;
 		int bottom = source.getHeight();
@@ -242,44 +317,8 @@ public class ImageProcessor {
 				if (bottom < source.getHeight()) bottom++;
 			}
 		}
-		int left = 0;
-		int right = source.getWidth();
-		if (settings.stripWhitespaceX) {
-			outer:
-			for (int x = 0; x < source.getWidth(); x++) {
-				for (int y = top; y < bottom; y++) {
-					alphaRaster.getDataElements(x, y, a);
-					int alpha = a[0];
-					if (alpha < 0) alpha += 256;
-					if (alpha > settings.alphaThreshold) break outer;
-				}
-				left++;
-			}
-			outer:
-			for (int x = source.getWidth(); --x >= left;) {
-				for (int y = top; y < bottom; y++) {
-					alphaRaster.getDataElements(x, y, a);
-					int alpha = a[0];
-					if (alpha < 0) alpha += 256;
-					if (alpha > settings.alphaThreshold) break outer;
-				}
-				right--;
-			}
-			// Leave 1px so nothing is copied into padding.
-			if (settings.duplicatePadding) {
-				if (left > 0) left--;
-				if (right < source.getWidth()) right++;
-			}
-		}
-		int newWidth = right - left;
-		int newHeight = bottom - top;
-		if (newWidth <= 0 || newHeight <= 0) {
-			if (settings.ignoreBlankImages)
-				return null;
-			else
-				return new MultiTexturePacker.Rect(emptyImage, 0, 0, 1, 1, false, false);
-		}
-		return new MultiTexturePacker.Rect(source, left, top, newWidth, newHeight, false, true);
+
+		return new int[] {top, bottom};
 	}
 
 	static private String splitError (int x, int y, int[] rgba, String name) {
