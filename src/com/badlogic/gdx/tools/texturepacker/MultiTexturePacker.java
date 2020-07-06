@@ -630,9 +630,7 @@ public class MultiTexturePacker {
 				String additionalFileSuffix = additionalFileSuffixes[i];
 				twinImages[i] = getImage(imageProcessor, originalInput, additionalFileSuffix);
 
-				if (twinImages[i] == null) {
-					System.out.println();
-				}
+				if (isPatch) continue;
 
 				Rect out = imageProcessor.processImage(image, name, twinImages[i]);
 
@@ -662,9 +660,6 @@ public class MultiTexturePacker {
 							twinImage.getColorModel().isAlphaPremultiplied(), null);
 				}
 			}
-
-
-			System.out.println();
 		}
 
 		public BufferedImage getImage (ImageProcessor imageProcessor, String originalDirToLookIn, String fileSuffix) {
