@@ -17,6 +17,7 @@
 package com.badlogic.gdx.tools.texturepacker;
 
 import java.awt.*;
+import java.awt.image.RasterFormatException;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.FileReader;
@@ -316,22 +317,22 @@ public class MultiTexturePacker {
 	private boolean packOutputRectForGraphics (Page page, BufferedImage canvas, Graphics2D g, int r, int rn,
 		ObjectMap<String, BufferedImage> additionalImages, ObjectMap<String, Graphics2D> additionalGraphics) {
 		Rect rect = page.outputRects.get(r);
+
 		BufferedImage image = rect.getImage(imageProcessor);
 
-		putImageIntoGraphics(page, canvas, g, rect, image);
+		rect.image = image;
 
+		rect.mergeWithAdditionals(imageProcessor, originalInputs, additionalFileSuffixes);
+
+		putImageIntoGraphics(page, canvas, g, rect, rect.image);
 		for (int i = 0; i < additionalOutputs.length; i++) {
 
 			BufferedImage bufferImage = additionalImages.get(this.additionalOutputs[i]);
 			Graphics2D graphics = additionalGraphics.get(this.additionalOutputs[i]);
 
-			String suffix = this.additionalFileSuffixes[i];
-			String originalInput = this.originalInputs[0];
+			BufferedImage twinImage = rect.twinImages[i];
 
-			BufferedImage additionalImage = rect.getImage(imageProcessor, originalInput, suffix);
-
-			if (additionalImage != null)
-				putImageIntoGraphics(page, bufferImage, graphics, rect, additionalImage);
+			putImageIntoGraphics(page, bufferImage, graphics, rect, twinImage);
 		}
 
 		if (progress.update(r + 1, rn))
@@ -564,14 +565,15 @@ public class MultiTexturePacker {
 
 		private boolean isPatch;
 		private BufferedImage image;
-		private BufferedImage twinImage;
+		private BufferedImage[] twinImages = new BufferedImage[10];
 		private File file;
 		int score1, score2;
 
 		Rect (BufferedImage source, int left, int top, int newWidth, int newHeight, boolean isPatch) {
-			image = new BufferedImage(source.getColorModel(),
-				source.getRaster().createWritableChild(left, top, newWidth, newHeight, 0, 0, null),
-				source.getColorModel().isAlphaPremultiplied(), null);
+//			image = new BufferedImage(source.getColorModel(),
+//				source.getRaster().createWritableChild(left, top, newWidth, newHeight, 0, 0, null),
+//				source.getColorModel().isAlphaPremultiplied(), null);
+			this.image = source;
 			offsetX = left;
 			offsetY = top;
 			regionWidth = newWidth;
@@ -585,9 +587,9 @@ public class MultiTexturePacker {
 
 		Rect (BufferedImage source, int left, int top, int newWidth, int newHeight, boolean isPatch, BufferedImage twinImage) {
 			this(source, left, top, newWidth, newHeight, isPatch);
-			image = new BufferedImage(source.getColorModel(),
-					source.getRaster().createWritableChild(left, top, newWidth, newHeight, 0, 0, null),
-					source.getColorModel().isAlphaPremultiplied(), null);
+//			image = new BufferedImage(source.getColorModel(),
+//					source.getRaster().createWritableChild(left, top, newWidth, newHeight, 0, 0, null),
+//					source.getColorModel().isAlphaPremultiplied(), null);
 			offsetX = left;
 			offsetY = top;
 			regionWidth = newWidth;
@@ -596,7 +598,6 @@ public class MultiTexturePacker {
 			originalHeight = source.getHeight();
 			width = newWidth;
 			height = newHeight;
-			this.twinImage = twinImage;
 			this.isPatch = isPatch;
 		}
 
@@ -619,7 +620,51 @@ public class MultiTexturePacker {
 			String name = this.name;
 			if (isPatch) name += ".9";
 
-			return imageProcessor.processImage(image, name, twinImage).getImage(null);
+			return imageProcessor.processImage(image, name, null).getImage(null);
+		}
+
+
+		public void mergeWithAdditionals (ImageProcessor imageProcessor, String[] originalInputs, String[] additionalFileSuffixes) {
+			for (int i = 0; i < originalInputs.length; i++) {
+				String originalInput = originalInputs[i];
+				String additionalFileSuffix = additionalFileSuffixes[i];
+				twinImages[i] = getImage(imageProcessor, originalInput, additionalFileSuffix);
+
+				if (twinImages[i] == null) {
+					System.out.println();
+				}
+
+				Rect out = imageProcessor.processImage(image, name, twinImages[i]);
+
+				this.offsetX = out.offsetX;
+				this.offsetY = out.offsetY;
+				this.width = out.width;
+				this.height = out.height;
+
+				this.regionWidth = out.regionWidth;
+				this.regionHeight = out.regionHeight;
+
+				this.originalWidth = out.originalWidth;
+				this.originalHeight = out.originalHeight;
+
+			}
+
+
+			this.image = new BufferedImage(image.getColorModel(),
+					image.getRaster().createWritableChild(this.offsetX, this.offsetY, this.regionWidth, this.regionHeight, 0, 0, null),
+					image.getColorModel().isAlphaPremultiplied(), null);
+
+			for (int i = 0; i < twinImages.length; i++) {
+				BufferedImage twinImage = twinImages[i];
+				if (twinImage != null) {
+					twinImages[i] = new BufferedImage(twinImage.getColorModel(),
+							twinImage.getRaster().createWritableChild(this.offsetX, this.offsetY, this.regionWidth, this.regionHeight, 0, 0, null),
+							twinImage.getColorModel().isAlphaPremultiplied(), null);
+				}
+			}
+
+
+			System.out.println();
 		}
 
 		public BufferedImage getImage (ImageProcessor imageProcessor, String originalDirToLookIn, String fileSuffix) {
@@ -632,18 +677,6 @@ public class MultiTexturePacker {
 				indexString = "_" + index;
 			}
 
-			if (isPatch) {
-				newFile = new File(originalDirToLookIn, name + indexString + ".9" + ".png");
-			} else {
-				newFile = new File(originalDirToLookIn, name + indexString + ".png");
-			}
-
-			try {
-				this.image = ImageIO.read(newFile);
-			}catch (IOException e) {
-				throw new RuntimeException("No image found in original input directory: " + newFile.getAbsolutePath());
-			}
-
 			try {
 				if (isPatch) {
 					newFile = new File(originalDirToLookIn, name + indexString + fileSuffix + ".9" + ".png");
@@ -652,9 +685,15 @@ public class MultiTexturePacker {
 				}
 
 				image = ImageIO.read(newFile);
-				System.out.println("Have additional asset for " + name + indexString + " " + fileSuffix);
+
+				if (isPatch) {
+					image = new BufferedImage(image.getColorModel(),
+							image.getRaster().createWritableChild(1, 1, image.getWidth()-2, image.getHeight()-2, 0, 0, null),
+							image.getColorModel().isAlphaPremultiplied(), null);
+				}
+
+				return image;
 			} catch (IOException ex) {
-				System.out.println("Using black alpha masked version for " + name + indexString +" " + fileSuffix);
 
 				if (isPatch) {
 					newFile = new File(originalDirToLookIn, name + indexString + ".9" + ".png");
@@ -664,32 +703,55 @@ public class MultiTexturePacker {
 
 				try {
 					image = ImageIO.read(newFile);
-					BufferedImage emissive = new BufferedImage(image.getWidth(), image.getHeight(), BufferedImage.TYPE_INT_ARGB);
 
-					for (int x = 0; x < image.getWidth(); x++) {
-						for (int y = 0; y < image.getHeight(); y++) {
+					int startX = 0;
+					int startY = 0;
+					int endX = image.getWidth();
+					int endY = image.getHeight();
+
+					int patchX = 0;
+					int patchY = 0;
+
+					if (isPatch) {
+						patchX = 1;
+						patchY = 1;
+					}
+
+					BufferedImage emissive = new BufferedImage(image.getWidth() - (patchX*2), image.getHeight() - (patchY*2), BufferedImage.TYPE_4BYTE_ABGR);
+
+
+
+					startX += patchX;
+					startY += patchY;
+					endX -= patchX;
+					endY -= patchY;
+
+					for (int x = startX; x < endX; x++) {
+						for (int y = startY; y < endY; y++) {
 							Color pixelColor = new Color(image.getRGB(x, y), true);
 							int r = 0;
 							int g = 0;
 							int b = 0;
 							int a = pixelColor.getAlpha();
 							int rgba = (a << 24) | (r << 16) | (g << 8) | b;
-							emissive.setRGB(x, y, rgba);
+							try {
+								emissive.setRGB(x - patchX, y - patchY, rgba);
+							} catch (ArrayIndexOutOfBoundsException e) {
+								System.out.println();
+							}
 						}
 					}
 
 					image = emissive;
 
+					return image;
+
 				} catch (IOException e) {
 					throw new RuntimeException("No image found in original input directory: " + newFile.getAbsolutePath());
 				}
 			}
-			if (image == null) return null;
-
-			String name = this.name;
-			if (isPatch) name += ".9";
-			return imageProcessor.processImage(image, name, null).getImage(null);
 		}
+
 
 		Rect () {
 		}
@@ -724,7 +786,6 @@ public class MultiTexturePacker {
 			score2 = rect.score2;
 			file = rect.file;
 			isPatch = rect.isPatch;
-			twinImage = rect.twinImage;
 		}
 
 		public int compareTo (Rect o) {
@@ -751,6 +812,8 @@ public class MultiTexturePacker {
 		static public String getAtlasName (String name, boolean flattenPaths) {
 			return flattenPaths ? new FileHandle(name).name() : name;
 		}
+
+
 	}
 
 	/** @param input Directory containing individual images to be packed.
