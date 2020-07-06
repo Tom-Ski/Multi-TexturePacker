@@ -1,0 +1,12 @@
+{
+  "combineSubdirectories": true,
+  "maxWidth": 2048,
+  "maxHeight": 2048,
+  "edgePadding": true,
+  "duplicatePadding": true,
+  "paddingX": 2,
+  "paddingY": 2,
+  "alias": false,
+  "stripWhitespaceX": true,
+  "stripWhitespaceY": true
+}

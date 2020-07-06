@@ -664,6 +664,7 @@ public class MultiTexturePacker {
 
 				try {
 					image = ImageIO.read(newFile);
+					BufferedImage emissive = new BufferedImage(image.getWidth(), image.getHeight(), BufferedImage.TYPE_INT_ARGB);
 
 					for (int x = 0; x < image.getWidth(); x++) {
 						for (int y = 0; y < image.getHeight(); y++) {
@@ -673,9 +674,11 @@ public class MultiTexturePacker {
 							int b = 0;
 							int a = pixelColor.getAlpha();
 							int rgba = (a << 24) | (r << 16) | (g << 8) | b;
-							image.setRGB(x, y, rgba);
+							emissive.setRGB(x, y, rgba);
 						}
 					}
+
+					image = emissive;
 
 				} catch (IOException e) {
 					throw new RuntimeException("No image found in original input directory: " + newFile.getAbsolutePath());
@@ -685,7 +688,7 @@ public class MultiTexturePacker {
 
 			String name = this.name;
 			if (isPatch) name += ".9";
-			return imageProcessor.processImage(image, name, this.image).getImage(null);
+			return imageProcessor.processImage(image, name, null).getImage(null);
 		}
 
 		Rect () {
